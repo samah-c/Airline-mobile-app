@@ -17,6 +17,7 @@ kotlin {
 
 dependencies {
     implementation(libs.ktor.server.auth)
+    implementation("org.postgresql:postgresql:42.7.3")
     implementation("org.mindrot:jbcrypt:0.4")
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.auth.jwt)
