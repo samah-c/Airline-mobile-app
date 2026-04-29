@@ -66,4 +66,22 @@ fun Route.authRoutes(authService: AuthService) {
 
         call.respond(HttpStatusCode.OK, AuthResponse(token, user.id))
     }
+
+    post("/api/auth/forgot-password") {
+        val body = call.receive<Map<String, String>>()
+        val email = body["email"] ?: return@post call.respond(
+            HttpStatusCode.BadRequest, "Email required"
+        )
+
+        val exists = authService.emailExists(email)
+        if (!exists) {
+            // On répond OK même si l'email n'existe pas (sécurité)
+            call.respond(HttpStatusCode.OK, "Reset instructions sent")
+            return@post
+        }
+
+        // En production → envoyer un vrai email
+        // Pour l'instant on simule juste
+        call.respond(HttpStatusCode.OK, mapOf("message" to "Reset instructions sent to $email"))
+    }
 }
