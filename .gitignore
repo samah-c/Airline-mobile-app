@@ -1,1 +1,4 @@
 Backend/local.properties
+.idea/caches/
+Backend/.kotlin/
+local.properties
