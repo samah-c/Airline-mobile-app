@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Approximation of the EnTatto arrow logo.
+    Replace the pathData with the official SVG path from the design assets when available.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="80dp"
+    android:height="80dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Main arrow body: bottom-left → upper-right tip → inner notch → lower-right → close -->
+    <path
+        android:pathData="M 18,72 L 78,18 L 54,50 L 78,82 Z"
+        android:fillColor="#00000000"
+        android:strokeColor="#2541EE"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+</vector>
