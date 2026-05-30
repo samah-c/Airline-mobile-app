@@ -32,4 +32,6 @@ dependencies {
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
     implementation("com.google.firebase:firebase-admin:9.2.0")
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    implementation("com.google.api-client:google-api-client:2.2.0")
 }

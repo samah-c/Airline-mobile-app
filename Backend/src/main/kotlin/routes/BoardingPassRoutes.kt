@@ -32,5 +32,22 @@ fun Route.boardingPassRoutes(boardingPassService: BoardingPassService) {
 
             call.respond(HttpStatusCode.OK, boardingPass)
         }
+
+        // Télécharger le PDF
+        get("/api/boarding-pass/{checkInId}/pdf") {
+            val checkInId = call.parameters["checkInId"]?.toInt()
+                ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid ID")
+
+            val boardingPass = boardingPassService.getByCheckIn(checkInId)
+                ?: return@get call.respond(HttpStatusCode.NotFound, "Boarding pass not found")
+
+            val pdfBytes = boardingPassService.generatePdf(boardingPass)
+
+            call.response.header(
+                "Content-Disposition",
+                "attachment; filename=\"boarding-pass-${boardingPass.bookingReference}.pdf\""
+            )
+            call.respondBytes(pdfBytes, contentType = io.ktor.http.ContentType.Application.Pdf)
+        }
     }
 }

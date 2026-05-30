@@ -3,6 +3,7 @@ package com.example.routes
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.example.models.AuthResponse
+import com.example.models.GoogleSignInRequest
 import com.example.models.LoginRequest
 import com.example.models.RegisterRequest
 import com.example.services.AuthService
@@ -91,5 +92,27 @@ fun Route.authRoutes(authService: AuthService) {
         // En production → envoyer un vrai email
         // Pour l'instant on simule juste
         call.respond(HttpStatusCode.OK, mapOf("message" to "Reset instructions sent to $email"))
+    }
+
+    post("/api/auth/google") {
+        val request = call.receive<GoogleSignInRequest>()
+
+        try {
+            val (userId, isNew) = authService.googleSignIn(request.idToken)
+
+            val token = JWT.create()
+                .withAudience(jwtAudience)
+                .withIssuer(jwtDomain)
+                .withClaim("userId", userId)
+                .withExpiresAt(Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000))
+                .sign(Algorithm.HMAC256(jwtSecret))
+
+            call.respond(
+                if (isNew) HttpStatusCode.Created else HttpStatusCode.OK,
+                AuthResponse(token, userId)
+            )
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.Unauthorized, "Invalid Google token")
+        }
     }
 }

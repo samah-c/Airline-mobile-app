@@ -132,4 +132,82 @@ class BoardingPassService(
                 )
             }
     }
+
+    fun generatePdf(boardingPass: BoardingPassResponse): ByteArray {
+        val outputStream = java.io.ByteArrayOutputStream()
+
+        val writer = com.itextpdf.kernel.pdf.PdfWriter(outputStream)
+        val pdfDoc = com.itextpdf.kernel.pdf.PdfDocument(writer)
+        val document = com.itextpdf.layout.Document(pdfDoc)
+
+        val boldFont = com.itextpdf.kernel.font.PdfFontFactory.createFont(
+            com.itextpdf.io.font.constants.StandardFonts.HELVETICA_BOLD
+        )
+        val regularFont = com.itextpdf.kernel.font.PdfFontFactory.createFont(
+            com.itextpdf.io.font.constants.StandardFonts.HELVETICA
+        )
+
+        // Titre
+        document.add(
+            com.itextpdf.layout.element.Paragraph("BOARDING PASS")
+                .setFont(boldFont)
+                .setFontSize(24f)
+                .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER)
+        )
+
+        document.add(com.itextpdf.layout.element.Paragraph("\n"))
+
+        // Infos vol
+        document.add(
+            com.itextpdf.layout.element.Paragraph("${boardingPass.origin}  →  ${boardingPass.destination}")
+                .setFont(boldFont)
+                .setFontSize(20f)
+                .setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER)
+        )
+
+        document.add(com.itextpdf.layout.element.Paragraph("\n"))
+
+        // Table infos
+        val table = com.itextpdf.layout.element.Table(2).useAllAvailableWidth()
+
+        fun addRow(label: String, value: String) {
+            table.addCell(
+                com.itextpdf.layout.element.Cell().add(
+                    com.itextpdf.layout.element.Paragraph(label).setFont(boldFont).setFontSize(12f)
+                )
+            )
+            table.addCell(
+                com.itextpdf.layout.element.Cell().add(
+                    com.itextpdf.layout.element.Paragraph(value).setFont(regularFont).setFontSize(12f)
+                )
+            )
+        }
+
+        addRow("Passenger", boardingPass.passengerName)
+        addRow("Flight", boardingPass.flightNumber)
+        addRow("Date", boardingPass.departureTime)
+        addRow("Seat", boardingPass.seatNumber)
+        addRow("Class", boardingPass.seatClass)
+        addRow("Gate", boardingPass.gate)
+        addRow("Booking Ref", boardingPass.bookingReference)
+        addRow("Status", boardingPass.status)
+
+        document.add(table)
+        document.add(com.itextpdf.layout.element.Paragraph("\n"))
+
+        // QR Code info
+        document.add(
+            com.itextpdf.layout.element.Paragraph("QR Code Data:")
+                .setFont(boldFont)
+                .setFontSize(12f)
+        )
+        document.add(
+            com.itextpdf.layout.element.Paragraph(boardingPass.qrCode)
+                .setFont(regularFont)
+                .setFontSize(8f)
+        )
+
+        document.close()
+        return outputStream.toByteArray()
+    }
 }

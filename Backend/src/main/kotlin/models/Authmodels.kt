@@ -29,3 +29,7 @@ data class UserResponse(
     val email: String,
     val phoneNumber: String
 )
+@Serializable
+data class GoogleSignInRequest(
+    val idToken: String
+)
