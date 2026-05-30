@@ -25,10 +25,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -134,13 +134,8 @@ private fun buildSeatMap(): List<RowItem> = buildList {
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 @Composable
-fun SeatSelectionScreen(
-    onBack: () -> Unit = {},
-    onNext: () -> Unit = {},
-    viewModel: SeatSelectionViewModel = viewModel(factory = SeatSelectionViewModel.Factory())
-) {
-    val uiState   by viewModel.uiState.collectAsState()
-    val selectedSeats = uiState.selectedSeats
+fun SeatSelectionScreen(onBack: () -> Unit = {}, onNext: () -> Unit = {}) {
+    var selectedSeats by remember { mutableStateOf(emptySet<String>()) }
     val seatMap       = remember { buildSeatMap() }
 
     Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
@@ -162,7 +157,7 @@ fun SeatSelectionScreen(
                 items(seatMap) { item ->
                     when (item) {
                         is RowItem.SeatRow -> SeatRowItem(item, selectedSeats) { id ->
-                            viewModel.toggleSeat(id)
+                            selectedSeats = if (id in selectedSeats) selectedSeats - id else selectedSeats + id
                         }
                         RowItem.ExitRow  -> ExitRowContent()
                         RowItem.Wings    -> WingsSection()
