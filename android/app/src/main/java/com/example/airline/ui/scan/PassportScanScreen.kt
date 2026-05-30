@@ -1,4 +1,4 @@
-package com.example.airline.view.passeport
+package com.example.airline.ui.scan
 
 import android.Manifest
 import android.content.Context
@@ -12,9 +12,11 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
@@ -52,14 +54,12 @@ fun PassportScanScreen(
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     var previewView by remember { mutableStateOf<PreviewView?>(null) }
 
-    // ✅ Démarrer la caméra quand permission accordée + PreviewView prêt
     LaunchedEffect(cameraPermissionState.status.isGranted, previewView) {
         if (cameraPermissionState.status.isGranted && previewView != null) {
             startCamera(context, lifecycleOwner, previewView!!, viewModel)
         }
     }
 
-    // ✅ Navigation automatique après extraction MRZ réussie
     LaunchedEffect(state.extractedMrzData) {
         state.extractedMrzData?.let { data ->
             onMrzExtracted(data)
@@ -69,18 +69,33 @@ fun PassportScanScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scanner Passeport") },
+                title = {
+                    Text(
+                        text = "Passport Scan",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .size(42.dp)
+                            .background(Color.White, RoundedCornerShape(12.dp))
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.Refresh, // ou ChevronLeft
-                            contentDescription = "Retour"
+                            imageVector = Icons.Default.ArrowBackIosNew,
+                            contentDescription = "Back",
+                            tint = Color.Black
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0066FF)
-                )
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black
+                ),
+                modifier = Modifier.shadow(2.dp)
             )
         },
         containerColor = Color(0xFFF5F0E8)
@@ -101,12 +116,12 @@ fun PassportScanScreen(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // 📷 Preview Caméra
                     if (!state.showCapturedImage) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f)
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
                         ) {
                             AndroidView(
                                 factory = { ctx ->
@@ -115,77 +130,65 @@ fun PassportScanScreen(
                                         implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                                     }
                                 },
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black)
+                                modifier = Modifier.fillMaxSize()
                             )
                             ScanFrameOverlay(
                                 modifier = Modifier
                                     .fillMaxWidth(0.9f)
-                                    .aspectRatio(1.58f)
-                                    .align(Alignment.Center)
+                                    .aspectRatio(0.72f)
                             )
                         }
                     } else {
-                        // 🖼️ Affichage image capturée
                         state.imageCaptureUri?.let { uri ->
                             CapturedImageView(
-                                imageUri = uri,
+                                imageUri = Uri.parse(uri),
                                 onRetake = { viewModel.retakePhoto() },
                                 onConfirm = { viewModel.confirmPhoto(context) },
                                 isLoading = state.isLoading,
-                                passportInfo = state.passportInfo
+                                passportInfo = state.extractedMrzData?.surname
                             )
                         }
                     }
 
-                    // 🔄 Indicateur OCR ou Bouton Valider
                     if (!state.showCapturedImage) {
-                        Column(
+                        Box(
                             modifier = Modifier
-                                .padding(bottom = 48.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .fillMaxWidth()
+                                .padding(bottom = 32.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             if (state.isProcessingOcr) {
-                                CircularProgressIndicator(
-                                    color = Color(0xFF0066FF),
-                                    strokeWidth = 3.dp
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    "Analyse du MRZ en cours...",
-                                    color = Color.Black.copy(alpha = 0.9f)
-                                )
-                            } else {
-                                Surface(
-                                    onClick = { viewModel.processMrzOcr() },
-                                    shape = RoundedCornerShape(30.dp),
-                                    color = Color(0xFF0066FF),
-                                    modifier = Modifier
-                                        .size(72.dp)
-                                        .shadow(8.dp, RoundedCornerShape(30.dp))
-                                        .clip(RoundedCornerShape(30.dp)),
-                                    enabled = !state.isLoading && state.isCameraReady
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Check,
-                                            contentDescription = "Valider",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(36.dp)
-                                        )
-                                    }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator(
+                                        color = Color(0xFF1942D8),
+                                        strokeWidth = 3.dp
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        "Analyzing MRZ...",
+                                        color = Color.Black.copy(alpha = 0.85f),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    "Appuyez pour extraire",
-                                    color = Color.Black.copy(alpha = 0.9f)
-                                )
+                            } else {
+                                FloatingActionButton(
+                                    onClick = { viewModel.processMrzOcr(context) },
+                                    containerColor = Color(0xFF1942D8),
+                                    shape = CircleShape,
+                                    modifier = Modifier.size(76.dp),
+                                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = "Confirm",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
                             }
                         }
                     }
 
-                    // ❌ Affichage erreur
                     state.error?.let { error ->
                         Card(
                             modifier = Modifier
@@ -207,7 +210,7 @@ fun PassportScanScreen(
                                 IconButton(onClick = { viewModel.clearError() }) {
                                     Icon(
                                         imageVector = Icons.Default.Refresh,
-                                        contentDescription = "Fermer",
+                                        contentDescription = "Close",
                                         tint = MaterialTheme.colorScheme.onErrorContainer
                                     )
                                 }
@@ -385,7 +388,6 @@ fun ScanFrameOverlay(modifier: Modifier = Modifier) {
     }
 }
 
-// ✅ Fonction de démarrage caméra
 private fun startCamera(
     context: Context,
     lifecycleOwner: LifecycleOwner,
@@ -399,25 +401,20 @@ private fun startCamera(
         try {
             val cameraProvider = cameraProviderFuture.get()
 
-            // Preview
             val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(previewView.surfaceProvider)
             }
 
-            // ImageCapture
             val imageCapture = ImageCapture.Builder()
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
                 .build()
 
-            // ✅ Lier au ViewModel
             viewModel.imageCapture = imageCapture
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-            // Unbind before rebinding
             cameraProvider.unbindAll()
 
-            // Bind to lifecycle
             cameraProvider.bindToLifecycle(
                 lifecycleOwner,
                 cameraSelector,
@@ -430,7 +427,6 @@ private fun startCamera(
 
         } catch (exc: Exception) {
             Log.e("CameraX", "❌ Use case binding failed", exc)
-            // Optionnel : notifier l'UI via ViewModel
         }
     }, ContextCompat.getMainExecutor(context))
 }

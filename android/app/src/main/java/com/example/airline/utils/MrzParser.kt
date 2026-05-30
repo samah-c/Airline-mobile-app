@@ -1,158 +1,134 @@
 package com.example.airline.utils
 
-data class MrzData(
-    val passportNumber: String,
-    val surname: String,
-    val givenNames: String,
-    val nationality: String,
-    val dateOfBirth: String,    // Format YYMMDD
-    val sex: String,            // M/F/<
-    val expiryDate: String      // Format YYMMDD
-)
-
 object MrzParser {
+    private val mrzLineRegex = Regex("[A-Z0-9<]{30,44}")
+
     fun extractFromRawText(rawText: String): MrzData? {
-        // Nettoyage de base pour toutes les lignes
-        val lines = rawText.uppercase()
-            .replace("«", "<<")
-            .split('\n', '\r')
-            .map { line ->
-                // Ne garder QUE les caractères autorisés
-                line.replace(" ", "<").filter { c -> c in 'A'..'Z' || c in '0'..'9' || c == '<' }
-            }
-            .filter { it.length > 20 } // Ignorer les toutes petites lignes
+        val normalizedText = rawText
+            .uppercase()
+            .replace("\r", "")
+            .replace(Regex("[^\nA-Z0-9<]"), "")
 
-        // Signature TD2/TD3 (Passeports) : Nationalité(3) + DOB(6) + Check(1) + Sex(1) + Expiry(6)
-        val td2Td3Signature = Regex("([A-Z<]{3})([0-9<]{6})[0-9<]([MF<])([0-9<]{6})")
-        
-        // Signature TD1 (Cartes ID) : DOB(6) + Check(1) + Sex(1) + Expiry(6) + Check(1) + Nationalité(3)
-        val td1Signature = Regex("([0-9<]{6})[0-9<]([MF<])([0-9<]{6})[0-9<]?([A-Z<]{3})")
+        val lines = normalizedText
+            .split("\n")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
 
-        val td2Td3Index = lines.indexOfFirst { td2Td3Signature.containsMatchIn(it) }
-        val td1Index = lines.indexOfFirst { td1Signature.containsMatchIn(it) }
+        val mrzLines = findMrzLines(lines)
+        if (mrzLines.size < 2) return null
 
+        val line1 = mrzLines[0].padEnd(44, '<')
+        val line2 = mrzLines[1].padEnd(44, '<')
+
+        return parsePassportMrz(line1, line2)
+    }
+
+    fun extractFromRawTextWithValidation(rawText: String): Pair<MrzData?, Boolean> {
+        val normalizedText = rawText
+            .uppercase()
+            .replace("\r", "")
+            .replace(Regex("[^\nA-Z0-9<]"), "")
+
+        val lines = normalizedText
+            .split("\n")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
+        val mrzLines = findMrzLines(lines)
+        if (mrzLines.size < 2) return Pair(null, false)
+
+        val line1 = mrzLines[0].padEnd(44, '<')
+        val line2 = mrzLines[1].padEnd(44, '<')
+
+        val parsed = parsePassportMrz(line1, line2)
+        val valid = if (parsed != null) validateMrzChecks(line1, line2) else false
+        return Pair(parsed, valid)
+    }
+
+    private fun findMrzLines(lines: List<String>): List<String> {
+        val candidates = lines.map { it.replace(" ", "") }
+            .filter { it.length >= 30 }
+            .mapNotNull { line -> mrzLineRegex.find(line)?.value }
+
+        if (candidates.size >= 2) return candidates.take(2)
+
+        val joined = lines.joinToString(separator = "")
+        val allMatches = mrzLineRegex.findAll(joined).map { it.value }.toList()
+        return if (allMatches.size >= 2) allMatches.take(2) else emptyList()
+    }
+
+    private fun parsePassportMrz(line1: String, line2: String): MrzData? {
         return try {
-            if (td2Td3Index != -1) {
-                // On a trouvé la ligne 2 d'un passeport ! La ligne 1 est forcément juste au-dessus.
-                val line2 = lines[td2Td3Index]
-                val line1 = if (td2Td3Index > 0) lines[td2Td3Index - 1] else return null
-                parseTd2OrTd3(line1, line2)
-            } else if (td1Index != -1) {
-                // On a trouvé la ligne 2 d'une carte d'identité ! Ligne 1 au-dessus, Ligne 3 en-dessous.
-                val line2 = lines[td1Index]
-                val line1 = if (td1Index > 0) lines[td1Index - 1] else return null
-                val line3 = if (td1Index < lines.size - 1) lines[td1Index + 1] else return null
-                parseTd1(line1, line2, line3)
-            } else {
-                null
-            }
+            val documentType = line1.substring(0, 1).replace("<", " ").trim()
+            val issuingCountry = line1.substring(2, 5).replace("<", " ").trim()
+
+            val namesSection = line1.substring(5, 44)
+            val nameParts = namesSection.split("<<")
+            val surname = nameParts.getOrNull(0)?.replace("<", " ")?.trim() ?: ""
+            val givenNames = nameParts.getOrNull(1)?.replace("<", " ")?.trim() ?: ""
+
+            val passportNumber = line2.substring(0, 9).replace("<", " ").trim()
+            val nationality = line2.substring(10, 13).replace("<", " ").trim()
+            val birthDate = line2.substring(13, 19).trim()
+            val sex = line2.substring(20, 21).trim()
+            val expiryDate = line2.substring(21, 27).trim()
+            val personalNumberRaw = line2.substring(28, 42).replace("<", " ").trim()
+            val personalNumber = if (personalNumberRaw.isBlank()) null else personalNumberRaw
+
+            MrzData(
+                documentType = documentType,
+                issuingCountry = issuingCountry,
+                surname = surname,
+                givenNames = givenNames,
+                passportNumber = passportNumber,
+                nationality = nationality,
+                birthDate = birthDate,
+                sex = sex,
+                expiryDate = expiryDate,
+                personalNumber = personalNumber
+            )
         } catch (e: Exception) {
             null
         }
     }
 
-    private fun String.safeSubstring(startIndex: Int, endIndex: Int): String {
-        if (startIndex >= this.length) return ""
-        val end = if (endIndex > this.length) this.length else endIndex
-        return this.substring(startIndex, end)
+    private fun charValue(c: Char): Int {
+        return when (c) {
+            in '0'..'9' -> c - '0'
+            in 'A'..'Z' -> c - 'A' + 10
+            '<' -> 0
+            else -> 0
+        }
     }
 
-    private fun parseTd1(line1: String, line2: String, line3: String): MrzData {
-        val l1 = line1.padEnd(30, '<')
-        val l2 = line2.padEnd(30, '<')
-        val l3 = line3.padEnd(30, '<')
-
-        val passportNumber = l1.safeSubstring(5, 14).replace("<", "")
-        
-        val regex = Regex("([0-9<]{6})[0-9<]([MF<])([0-9<]{6})[0-9<]?([A-Z<]{3})")
-        val match = regex.find(l2)
-        
-        var dob = ""
-        var sex = ""
-        var expiry = ""
-        var nationality = ""
-
-        if (match != null) {
-            dob = match.groupValues[1].replace("<", "")
-            sex = match.groupValues[2]
-            expiry = match.groupValues[3].replace("<", "")
-            nationality = match.groupValues[4].replace("<", "")
-        } else {
-            dob = l2.safeSubstring(0, 6).replace("<", "")
-            sex = l2.safeSubstring(7, 8).replace("<", "")
-            expiry = l2.safeSubstring(8, 14).replace("<", "")
-            nationality = l2.safeSubstring(15, 18).replace("<", "")
+    private fun computeCheckDigit(field: String): Int {
+        val weights = intArrayOf(7, 3, 1)
+        var sum = 0
+        for (i in field.indices) {
+            val v = charValue(field[i])
+            sum += v * weights[i % 3]
         }
-
-        val namesPart = l3.split("<<")
-        val surname = namesPart[0].replace("<", " ").trim()
-        val givenNames = if (namesPart.size > 1) namesPart[1].replace("<", " ").trim() else ""
-
-        return MrzData(
-            passportNumber = passportNumber,
-            surname = surname,
-            givenNames = givenNames,
-            nationality = nationality,
-            dateOfBirth = dob,
-            sex = if (sex == "M") "Masculin" else if (sex == "F") "Féminin" else "Autre",
-            expiryDate = expiry
-        )
+        return sum % 10
     }
 
-    private fun parseTd2OrTd3(line1: String, line2: String): MrzData {
-        // --- LIGNE 2 (Extraction intelligente anti-décalage) ---
-        var passportNumber = ""
-        var nationality = ""
-        var dob = ""
-        var sex = ""
-        var expiry = ""
+    private fun validateMrzChecks(line1: String, line2: String): Boolean {
+        try {
+            val passportField = line2.substring(0, 9)
+            val passportCheck = line2.substring(9, 10)[0]
+            val birthField = line2.substring(13, 19)
+            val birthCheck = line2.substring(19, 20)[0]
+            val expiryField = line2.substring(21, 27)
+            val expiryCheck = line2.substring(27, 28)[0]
 
-        val regex = Regex("([A-Z<]{3})([0-9<]{6})[0-9<]([MF<])([0-9<]{6})")
-        val match = regex.find(line2)
+            val passDigit = computeCheckDigit(passportField)
+            val birthDigit = computeCheckDigit(birthField)
+            val expDigit = computeCheckDigit(expiryField)
 
-        if (match != null) {
-            nationality = match.groupValues[1].replace("<", "")
-            dob = match.groupValues[2].replace("<", "")
-            sex = match.groupValues[3]
-            expiry = match.groupValues[4].replace("<", "")
-
-            val beforeMatch = line2.substring(0, match.range.first)
-            val passportStr = if (beforeMatch.isNotEmpty()) beforeMatch.substring(0, beforeMatch.length - 1) else ""
-            passportNumber = passportStr.replace("<", "").take(9)
-        } else {
-            passportNumber = line2.safeSubstring(0, 9).replace("<", "")
-            nationality = line2.safeSubstring(10, 13).replace("<", "")
-            dob = line2.safeSubstring(13, 19).replace("<", "")
-            sex = line2.safeSubstring(20, 21).replace("<", "")
-            expiry = line2.safeSubstring(21, 27).replace("<", "")
+            return (passDigit.toString()[0] == passportCheck)
+                    || (birthDigit.toString()[0] == birthCheck)
+                    || (expDigit.toString()[0] == expiryCheck)
+        } catch (e: Exception) {
+            return false
         }
-
-        // --- LIGNE 1 ---
-        val namesPart = line1.split("<<")
-        var surname = ""
-        
-        val firstPart = namesPart[0]
-        val natIndex = if (nationality.length == 3) firstPart.indexOf(nationality) else -1
-        
-        if (natIndex != -1) {
-            val surnameStart = natIndex + nationality.length
-            if (surnameStart < firstPart.length) {
-                surname = firstPart.substring(surnameStart).replace("<", " ").trim()
-            }
-        } else {
-            surname = if (firstPart.length > 5) firstPart.substring(5).replace("<", " ").trim() else firstPart.replace("<", " ").trim()
-        }
-
-        val givenNames = if (namesPart.size > 1) namesPart[1].replace("<", " ").trim() else ""
-
-        return MrzData(
-            passportNumber = passportNumber,
-            surname = surname,
-            givenNames = givenNames,
-            nationality = nationality,
-            dateOfBirth = dob,
-            sex = if (sex == "M") "Masculin" else if (sex == "F") "Féminin" else "Autre",
-            expiryDate = expiry
-        )
     }
 }

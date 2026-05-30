@@ -1,4 +1,4 @@
-package com.example.airline.view.services
+package com.example.airline.ui.services
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,8 +9,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,26 +22,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.airline.view.luggage.Stepper
-import com.example.airline.view.passeport.StepBar
+import com.example.airline.ui.checkin.CheckInViewModel
+import com.example.airline.ui.verification.StepBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ServicesPreferencesScreen(
+fun ServicesScreen(
+    viewModel: CheckInViewModel,
     onBack: () -> Unit,
     onConfirm: () -> Unit,
     onSkip: () -> Unit
 ) {
-    var selectedMeal by remember { mutableStateOf("Standard meal") }
-    
-    var wheelchairAssistance by remember { mutableStateOf(false) }
-    var visualImpairment by remember { mutableStateOf(true) }
-    var hearingImpairment by remember { mutableStateOf(false) }
-    var medicalEquipment by remember { mutableStateOf(false) }
-
-    var infantOnLap by remember { mutableStateOf(true) }
-    var numberOfInfants by remember { mutableStateOf(1) }
-    var travellingWithPet by remember { mutableStateOf(false) }
+    val state by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -48,7 +42,8 @@ fun ServicesPreferencesScreen(
                     Text(
                         text = "Services & Preferences",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+                        fontSize = 20.sp,
+                        color = Color.Black
                     )
                 },
                 navigationIcon = {
@@ -56,7 +51,7 @@ fun ServicesPreferencesScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBackIosNew,
                             contentDescription = "Back",
-                            tint = Color(0xFF1942D8)
+                            tint = Color.Black
                         )
                     }
                 },
@@ -76,32 +71,18 @@ fun ServicesPreferencesScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Step Indicator
-            Text(
-                text = "STEP 5 OF 5",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Gray
-            )
+            Text("STEP 5 OF 5", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6B7280))
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 StepBar(isActive = true, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(4.dp))
                 StepBar(isActive = true, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(4.dp))
                 StepBar(isActive = true, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(4.dp))
                 StepBar(isActive = true, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(4.dp))
                 StepBar(isActive = true, modifier = Modifier.weight(1f))
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Dietary Preference
             Text("DIETARY PREFERENCE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             Spacer(modifier = Modifier.height(16.dp))
             Card(
@@ -113,35 +94,27 @@ fun ServicesPreferencesScreen(
             ) {
                 Column {
                     DietaryItem(
-                        title = "Standard meal",
-                        subtitle = "Regular in-flight meal",
-                        icon = "🍽️",
-                        isSelected = selectedMeal == "Standard meal",
-                        onClick = { selectedMeal = "Standard meal" },
+                        title = "Standard meal", subtitle = "Regular in-flight meal", icon = "🍽️",
+                        isSelected = state.selectedMeal == "Standard meal",
+                        onClick = { viewModel.updateSelectedMeal("Standard meal") },
                         showBorder = true
                     )
                     DietaryItem(
-                        title = "Vegetarian",
-                        subtitle = "No meat or fish",
-                        icon = "🥗",
-                        isSelected = selectedMeal == "Vegetarian",
-                        onClick = { selectedMeal = "Vegetarian" },
+                        title = "Vegetarian", subtitle = "No meat or fish", icon = "🥗",
+                        isSelected = state.selectedMeal == "Vegetarian",
+                        onClick = { viewModel.updateSelectedMeal("Vegetarian") },
                         showBorder = true
                     )
                     DietaryItem(
-                        title = "Gluten-free",
-                        subtitle = "No gluten-containing foods",
-                        icon = "🌾",
-                        isSelected = selectedMeal == "Gluten-free",
-                        onClick = { selectedMeal = "Gluten-free" },
+                        title = "Gluten-free", subtitle = "No gluten-containing foods", icon = "🌾",
+                        isSelected = state.selectedMeal == "Gluten-free",
+                        onClick = { viewModel.updateSelectedMeal("Gluten-free") },
                         showBorder = true
                     )
                     DietaryItem(
-                        title = "Halal",
-                        subtitle = "Permissible under Islamic law",
-                        icon = "☪️",
-                        isSelected = selectedMeal == "Halal",
-                        onClick = { selectedMeal = "Halal" },
+                        title = "Halal", subtitle = "Permissible under Islamic law", icon = "☪️",
+                        isSelected = state.selectedMeal == "Halal",
+                        onClick = { viewModel.updateSelectedMeal("Halal") },
                         showBorder = false
                     )
                 }
@@ -149,46 +122,40 @@ fun ServicesPreferencesScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Assistance Needs
-            Text("ASSISTANCE NEEDS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            Text("ASSISTANCE NEEDS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 AssistanceItemBox(
-                    title = "Wheelchair assistance",
-                    icon = "♿",
-                    isSelected = wheelchairAssistance,
-                    onClick = { wheelchairAssistance = !wheelchairAssistance },
+                    title = "Wheelchair assistance", icon = "♿",
+                    isSelected = state.wheelchairAssistance,
+                    onClick = { viewModel.toggleWheelchairAssistance() },
                     modifier = Modifier.weight(1f)
                 )
                 AssistanceItemBox(
-                    title = "Visual impairment",
-                    icon = "👁️",
-                    isSelected = visualImpairment,
-                    onClick = { visualImpairment = !visualImpairment },
+                    title = "Visual impairment", icon = "👁️",
+                    isSelected = state.visualImpairment,
+                    onClick = { viewModel.toggleVisualImpairment() },
                     modifier = Modifier.weight(1f)
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 AssistanceItemBox(
-                    title = "Hearing impairment",
-                    icon = "🦻",
-                    isSelected = hearingImpairment,
-                    onClick = { hearingImpairment = !hearingImpairment },
+                    title = "Hearing impairment", icon = "🦻",
+                    isSelected = state.hearingImpairment,
+                    onClick = { viewModel.toggleHearingImpairment() },
                     modifier = Modifier.weight(1f)
                 )
                 AssistanceItemBox(
-                    title = "Medical equipment",
-                    icon = "⚕️",
-                    isSelected = medicalEquipment,
-                    onClick = { medicalEquipment = !medicalEquipment },
+                    title = "Medical equipment", icon = "⚕️",
+                    isSelected = state.medicalEquipmentService,
+                    onClick = { viewModel.toggleMedicalEquipmentService() },
                     modifier = Modifier.weight(1f)
                 )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Travelling Companions
             Text("TRAVELLING COMPANIONS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             Spacer(modifier = Modifier.height(16.dp))
             Card(
@@ -210,17 +177,15 @@ fun ServicesPreferencesScreen(
                                 .size(36.dp)
                                 .background(Color(0xFFFEF3C7), RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center
-                        ) {
-                            Text("👶", fontSize = 16.sp)
-                        }
+                        ) { Text("👶", fontSize = 16.sp) }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Infant on lap", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Text("Under 2 years old", color = Color.Gray, fontSize = 12.sp)
                         }
                         Switch(
-                            checked = infantOnLap,
-                            onCheckedChange = { infantOnLap = it },
+                            checked = state.infantOnLap,
+                            onCheckedChange = { viewModel.setInfantOnLap(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = Color(0xFF4AC29A)
@@ -228,7 +193,7 @@ fun ServicesPreferencesScreen(
                         )
                     }
 
-                    if (infantOnLap) {
+                    if (state.infantOnLap) {
                         Divider(color = Color(0xFF1942D8))
                         Row(
                             modifier = Modifier
@@ -239,9 +204,9 @@ fun ServicesPreferencesScreen(
                         ) {
                             Text("Number of infants", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.weight(1f))
                             Stepper(
-                                value = numberOfInfants,
-                                onMinus = { if (numberOfInfants > 1) numberOfInfants-- },
-                                onPlus = { if (numberOfInfants < 2) numberOfInfants++ }
+                                value = state.numberOfInfants,
+                                onMinus = { viewModel.decrementInfants() },
+                                onPlus = { viewModel.incrementInfants() }
                             )
                         }
                     }
@@ -259,17 +224,15 @@ fun ServicesPreferencesScreen(
                                 .size(36.dp)
                                 .background(Color(0xFFF3F4F6), RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center
-                        ) {
-                            Text("🐾", fontSize = 16.sp)
-                        }
+                        ) { Text("🐾", fontSize = 16.sp) }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Travelling with pet", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Text("Cabin or cargo hold", color = Color.Gray, fontSize = 12.sp)
                         }
                         Switch(
-                            checked = travellingWithPet,
-                            onCheckedChange = { travellingWithPet = it },
+                            checked = state.travellingWithPet,
+                            onCheckedChange = { viewModel.setTravellingWithPet(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = Color(0xFF4AC29A)
@@ -297,7 +260,7 @@ fun ServicesPreferencesScreen(
             Text(
                 text = "Skip this step",
                 fontSize = 14.sp,
-                color = Color.Gray,
+                color = Color(0xFF6B7280),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onSkip)
@@ -325,9 +288,7 @@ fun DietaryItem(title: String, subtitle: String, icon: String, isSelected: Boole
                     .size(36.dp)
                     .background(Color(0xFFF3F4F6), RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
-            ) {
-                Text(icon, fontSize = 16.sp)
-            }
+            ) { Text(icon, fontSize = 16.sp) }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -336,14 +297,10 @@ fun DietaryItem(title: String, subtitle: String, icon: String, isSelected: Boole
             if (isSelected) {
                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF1942D8), modifier = Modifier.size(24.dp))
             } else {
-                Box(modifier = Modifier
-                    .size(24.dp)
-                    .border(1.dp, Color.LightGray, CircleShape))
+                Box(modifier = Modifier.size(24.dp).border(1.dp, Color.LightGray, CircleShape))
             }
         }
-        if (showBorder) {
-            Divider(color = Color(0xFFE5E7EB))
-        }
+        if (showBorder) Divider(color = Color(0xFFE5E7EB))
     }
 }
 
@@ -351,11 +308,9 @@ fun DietaryItem(title: String, subtitle: String, icon: String, isSelected: Boole
 fun AssistanceItemBox(title: String, icon: String, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val bgColor = if (isSelected) Color(0xFF1942D8) else Color.White
     val textColor = if (isSelected) Color.White else Color.Black
-    val borderColor = if (isSelected) Color(0xFF1942D8) else Color(0xFF1942D8)
-
     Box(
         modifier = modifier
-            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .border(1.dp, Color(0xFF1942D8), RoundedCornerShape(12.dp))
             .background(bgColor, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(12.dp)
@@ -366,11 +321,38 @@ fun AssistanceItemBox(title: String, icon: String, isSelected: Boolean, onClick:
                     .size(36.dp)
                     .background(if (isSelected) Color.White.copy(alpha = 0.2f) else Color(0xFFEFF6FF), RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
-            ) {
-                Text(icon, fontSize = 16.sp)
-            }
+            ) { Text(icon, fontSize = 16.sp) }
             Spacer(modifier = Modifier.height(12.dp))
             Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = textColor, lineHeight = 16.sp)
+        }
+    }
+}
+
+@Composable
+fun Stepper(value: Int, onMinus: () -> Unit, onPlus: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .border(1.dp, Color(0xFFE5E7EB), CircleShape)
+                .clickable(onClick = onMinus),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Remove, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+        }
+        Text(
+            text = value.toString(),
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .border(1.dp, Color(0xFFE5E7EB), CircleShape)
+                .clickable(onClick = onPlus),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
         }
     }
 }

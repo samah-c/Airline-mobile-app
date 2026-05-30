@@ -1,4 +1,4 @@
-package com.example.airline.view.passeport
+package com.example.airline.ui.verification
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,28 +17,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.airline.utils.MrzData
+import com.example.airline.ui.checkin.CheckInViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConfirmDetailsScreen(
-    mrzData: MrzData,
+fun VerificationScreen(
+    viewModel: CheckInViewModel,
     onBack: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    var lastName by remember { mutableStateOf(mrzData.surname) }
-    var firstName by remember { mutableStateOf(mrzData.givenNames) }
-    var dob by remember { mutableStateOf(formatDate(mrzData.dateOfBirth)) }
-    var gender by remember { mutableStateOf(mrzData.sex) }
-    var nationality by remember { mutableStateOf(mrzData.nationality) }
-
-    var passportNumber by remember { mutableStateOf(mrzData.passportNumber) }
-    var issueDate by remember { mutableStateOf("") }
-    var expirationDate by remember { mutableStateOf(formatDate(mrzData.expiryDate)) }
-    var issuingAuthority by remember { mutableStateOf("") }
-
-    var email by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
+    val state by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -47,7 +35,8 @@ fun ConfirmDetailsScreen(
                     Text(
                         text = "Confirm your details",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+                        fontSize = 20.sp,
+                        color = Color.Black
                     )
                 },
                 navigationIcon = {
@@ -55,7 +44,7 @@ fun ConfirmDetailsScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBackIosNew,
                             contentDescription = "Back",
-                            tint = Color(0xFF1942D8)
+                            tint = Color.Black
                         )
                     }
                 },
@@ -75,78 +64,117 @@ fun ConfirmDetailsScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Step Indicator
             Text(
                 text = "STEP 2 OF 5",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Gray
+                color = Color(0xFF6B7280)
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StepBar(isActive = true, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(4.dp))
                 StepBar(isActive = true, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(4.dp))
                 StepBar(isActive = false, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(4.dp))
                 StepBar(isActive = false, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(4.dp))
                 StepBar(isActive = false, modifier = Modifier.weight(1f))
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            // Personal Information
             SectionTitle("✈️", "Personal Information")
             Spacer(modifier = Modifier.height(16.dp))
-            CustomTextField(label = "Last Name", value = lastName, onValueChange = { lastName = it })
+            CustomTextField(
+                label = "Last Name",
+                value = state.lastName,
+                onValueChange = { viewModel.updateLastName(it) }
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            CustomTextField(label = "First Name", value = firstName, onValueChange = { firstName = it })
+            CustomTextField(
+                label = "First Name",
+                value = state.firstName,
+                onValueChange = { viewModel.updateFirstName(it) }
+            )
             Spacer(modifier = Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 CustomTextField(
                     label = "Date of birth",
-                    value = dob,
-                    onValueChange = { dob = it },
+                    value = state.dob,
+                    onValueChange = { viewModel.updateDob(it) },
                     modifier = Modifier.weight(1f),
+                    placeholder = "jj/mm/aaaa",
                     trailingIcon = {
                         Icon(Icons.Default.CalendarToday, contentDescription = "Calendar", tint = Color.Gray)
                     }
                 )
-                CustomTextField(label = "Gender", value = gender, onValueChange = { gender = it }, modifier = Modifier.weight(1f))
+                CustomTextField(
+                    label = "Gender",
+                    value = state.gender,
+                    onValueChange = { viewModel.updateGender(it) },
+                    modifier = Modifier.weight(1f)
+                )
             }
             Spacer(modifier = Modifier.height(16.dp))
-            CustomTextField(label = "Nationality", value = nationality, onValueChange = { nationality = it })
+            CustomTextField(
+                label = "Nationality",
+                value = state.nationality,
+                onValueChange = { viewModel.updateNationality(it) }
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Passeport Details
-            SectionTitle("✈️", "Passeport Details")
+            SectionTitle("✈️", "Passport Details")
             Spacer(modifier = Modifier.height(16.dp))
-            CustomTextField(label = "Passeport Number", value = passportNumber, onValueChange = { passportNumber = it })
+            CustomTextField(
+                label = "Passport Number",
+                value = state.passportNumber,
+                onValueChange = { viewModel.updatePassportNumber(it) }
+            )
             Spacer(modifier = Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                CustomTextField(label = "Issue Date", value = issueDate, onValueChange = { issueDate = it }, modifier = Modifier.weight(1f), placeholder = "jj/mm/aaaa")
-                CustomTextField(label = "Expiration Date", value = expirationDate, onValueChange = { expirationDate = it }, modifier = Modifier.weight(1f), placeholder = "jj/mm/aaaa")
+                CustomTextField(
+                    label = "Issue Date",
+                    value = state.issueDate,
+                    onValueChange = { viewModel.updateIssueDate(it) },
+                    modifier = Modifier.weight(1f),
+                    placeholder = "jj/mm/aaaa"
+                )
+                CustomTextField(
+                    label = "Expiration Date",
+                    value = state.expirationDate,
+                    onValueChange = { viewModel.updateExpirationDate(it) },
+                    modifier = Modifier.weight(1f),
+                    placeholder = "jj/mm/aaaa"
+                )
             }
             Spacer(modifier = Modifier.height(16.dp))
-            CustomTextField(label = "Issuing Authority", value = issuingAuthority, onValueChange = { issuingAuthority = it })
+            CustomTextField(
+                label = "Issuing Authority",
+                value = state.issuingAuthority,
+                onValueChange = { viewModel.updateIssuingAuthority(it) }
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Contact Information
             SectionTitle("✈️", "Contact Information")
             Spacer(modifier = Modifier.height(16.dp))
-            CustomTextField(label = "Email", value = email, onValueChange = { email = it })
+            CustomTextField(
+                label = "Email",
+                value = state.email,
+                onValueChange = { viewModel.updateEmail(it) }
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            // Simple Phone Number Field (In a real app, use a proper phone input component)
-            CustomTextField(label = "Phone number", value = phoneNumber, onValueChange = { phoneNumber = it }, placeholder = "123-456-7890", leadingIcon = {
-                Text("🇺🇸", modifier = Modifier.padding(start = 12.dp, end = 8.dp), fontSize = 20.sp)
-            })
+            CustomTextField(
+                label = "Phone number",
+                value = state.phoneNumber,
+                onValueChange = { viewModel.updatePhoneNumber(it) },
+                placeholder = "123-456-7890",
+                leadingIcon = {
+                    Text("🇩🇿", modifier = Modifier.padding(start = 12.dp, end = 8.dp), fontSize = 20.sp)
+                }
+            )
 
             Spacer(modifier = Modifier.height(48.dp))
 
@@ -181,18 +209,29 @@ fun StepBar(isActive: Boolean, modifier: Modifier = Modifier) {
 @Composable
 fun SectionTitle(icon: String, title: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = "$icon - - -",
-            fontSize = 16.sp,
-            color = Color(0xFF1942D8),
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(Color(0xFFE0F2FE), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(icon, fontSize = 16.sp)
+        }
+        Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = title,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1F2937)
+            color = Color(0xFF111827)
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Divider(
+            color = Color(0xFFE5E7EB),
+            thickness = 1.dp,
+            modifier = Modifier
+                .height(1.dp)
+                .weight(1f)
+                .align(Alignment.CenterVertically)
         )
     }
 }
@@ -211,15 +250,17 @@ fun CustomTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, color = Color.Gray, fontSize = 12.sp) },
-        placeholder = if (placeholder.isNotEmpty()) { { Text(placeholder, color = Color.LightGray) } } else null,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
+        label = { Text(label, color = Color(0xFF6B7280), fontSize = 12.sp) },
+        placeholder = if (placeholder.isNotEmpty()) { { Text(placeholder, color = Color(0xFF9CA3AF) ) } } else null,
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF8FAFB), RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = Color(0xFFD1D5DB),
+            unfocusedBorderColor = Color(0xFFE5E7EB),
             focusedBorderColor = Color(0xFF1942D8),
-            unfocusedContainerColor = Color(0xFFF9FAFB),
-            focusedContainerColor = Color(0xFFF9FAFB),
+            unfocusedContainerColor = Color(0xFFF8FAFB),
+            focusedContainerColor = Color(0xFFF8FAFB),
             unfocusedTextColor = Color.Black,
             focusedTextColor = Color.Black
         ),
@@ -227,19 +268,4 @@ fun CustomTextField(
         leadingIcon = leadingIcon,
         singleLine = true
     )
-}
-
-private fun formatDate(mrzDate: String): String {
-    // Convert YYMMDD to jj/mm/aaaa as much as possible, or keep as is
-    if (mrzDate.length == 6) {
-        val yy = mrzDate.substring(0, 2)
-        val mm = mrzDate.substring(2, 4)
-        val dd = mrzDate.substring(4, 6)
-        
-        // Simple heuristic for 19xx vs 20xx
-        val yyInt = yy.toIntOrNull() ?: 0
-        val yearPrefix = if (yyInt > 30) "19" else "20"
-        return "$dd/$mm/$yearPrefix$yy"
-    }
-    return mrzDate
 }

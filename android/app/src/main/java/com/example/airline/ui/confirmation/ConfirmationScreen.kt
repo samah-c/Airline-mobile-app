@@ -1,4 +1,4 @@
-package com.example.airline.view.confirmation
+package com.example.airline.ui.confirmation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -13,37 +13,39 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.airline.utils.MrzData
-import com.example.airline.view.luggage.SectionHeader
-import com.example.airline.view.passeport.CustomTextField
+import com.example.airline.ui.checkin.CheckInViewModel
+import com.example.airline.ui.verification.StepBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FinalConfirmationScreen(
-    mrzData: MrzData,
+fun ConfirmationScreen(
+    viewModel: CheckInViewModel,
     onBack: () -> Unit,
     onConfirm: () -> Unit,
     onNext: () -> Unit
 ) {
+    val state by viewModel.uiState.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = "Final confirmation",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 20.sp,
+                        color = Color.Black
                     )
                 },
                 navigationIcon = {
@@ -51,16 +53,18 @@ fun FinalConfirmationScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBackIosNew,
                             contentDescription = "Back",
-                            tint = Color(0xFF1942D8)
+                            tint = Color.Black
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black
+                ),
+                modifier = Modifier.shadow(2.dp)
             )
         },
-        containerColor = Color.White
+        containerColor = Color(0xFFF9FAFB)
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -71,66 +75,89 @@ fun FinalConfirmationScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Personal Information
-            SectionHeader(icon = Icons.Default.Flight, title = "Personal Information")
+            Text("STEP 5 OF 5", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6B7280))
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                StepBar(isActive = true, modifier = Modifier.weight(1f))
+                StepBar(isActive = true, modifier = Modifier.weight(1f))
+                StepBar(isActive = true, modifier = Modifier.weight(1f))
+                StepBar(isActive = true, modifier = Modifier.weight(1f))
+                StepBar(isActive = true, modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            ConfirmSectionHeader(icon = Icons.Default.Flight, title = "Personal Information")
             Spacer(modifier = Modifier.height(16.dp))
-            ReadOnlyTextField(label = "Last Name", value = mrzData.surname)
+            ReadOnlyTextField(label = "Last Name", value = state.lastName)
             Spacer(modifier = Modifier.height(12.dp))
-            ReadOnlyTextField(label = "First Name", value = mrzData.givenNames)
+            ReadOnlyTextField(label = "First Name", value = state.firstName)
             Spacer(modifier = Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 ReadOnlyTextField(
                     label = "Date of birth",
-                    value = formatDate(mrzData.dateOfBirth),
+                    value = state.dob,
                     modifier = Modifier.weight(1f),
-                    trailingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, tint = Color.Gray) }
+                    trailingIcon = {
+                        Icon(Icons.Default.CalendarToday, contentDescription = null, tint = Color.Gray)
+                    }
                 )
-                ReadOnlyTextField(label = "Gender", value = mrzData.sex, modifier = Modifier.weight(1f))
+                ReadOnlyTextField(label = "Gender", value = state.gender, modifier = Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(12.dp))
-            ReadOnlyTextField(label = "Nationality", value = mrzData.nationality)
+            ReadOnlyTextField(label = "Nationality", value = state.nationality)
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Passeport Details
-            SectionHeader(icon = Icons.Default.Flight, title = "Passeport Details")
+            ConfirmSectionHeader(icon = Icons.Default.Flight, title = "Passport Details")
             Spacer(modifier = Modifier.height(16.dp))
-            ReadOnlyTextField(label = "Passeport Number", value = mrzData.passportNumber)
+            ReadOnlyTextField(label = "Passport Number", value = state.passportNumber)
             Spacer(modifier = Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ReadOnlyTextField(label = "Issue Date", value = "jj/mm/aaaa", modifier = Modifier.weight(1f))
-                ReadOnlyTextField(label = "Expiration Date", value = formatDate(mrzData.expiryDate), modifier = Modifier.weight(1f))
+                ReadOnlyTextField(
+                    label = "Issue Date",
+                    value = state.issueDate.ifEmpty { "-" },
+                    modifier = Modifier.weight(1f)
+                )
+                ReadOnlyTextField(
+                    label = "Expiration Date",
+                    value = state.expirationDate,
+                    modifier = Modifier.weight(1f)
+                )
             }
             Spacer(modifier = Modifier.height(12.dp))
-            ReadOnlyTextField(label = "Issuing Authority", value = mrzData.nationality)
+            ReadOnlyTextField(label = "Issuing Authority", value = state.issuingAuthority.ifEmpty { "-" })
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Contact Information
-            SectionHeader(icon = Icons.Default.Flight, title = "Contact Information")
+            ConfirmSectionHeader(icon = Icons.Default.Flight, title = "Contact Information")
             Spacer(modifier = Modifier.height(16.dp))
-            ReadOnlyTextField(label = "Email", value = "user@example.com")
+            ReadOnlyTextField(label = "Email", value = state.email.ifEmpty { "-" })
             Spacer(modifier = Modifier.height(12.dp))
-            ReadOnlyTextField(label = "Phone number", value = "123-456-7890", leadingIcon = { Text("🇺🇸", modifier = Modifier.padding(start = 12.dp, end = 8.dp)) })
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Boarding pass
-            SectionHeader(icon = Icons.Default.Flight, title = "Boarding pass")
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            BoardingPassCard(
-                passengerName = "${mrzData.givenNames} ${mrzData.surname}".trim().ifEmpty { "Jon Bon Jovi" }
+            ReadOnlyTextField(
+                label = "Phone number",
+                value = state.phoneNumber.ifEmpty { "-" },
+                leadingIcon = {
+                    Text("🇩🇿", modifier = Modifier.padding(start = 12.dp, end = 8.dp))
+                }
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            ConfirmSectionHeader(icon = Icons.Default.Flight, title = "Boarding pass")
+            Spacer(modifier = Modifier.height(16.dp))
+            BoardingPassCard(
+                passengerName = "${state.firstName} ${state.lastName}".trim().ifEmpty { "Passenger" }
+            )
+
+            Spacer(modifier = Modifier.height(40.dp))
 
             Button(
                 onClick = onConfirm,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1942D8))
             ) {
                 Text("Confirmer", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
@@ -143,14 +170,39 @@ fun FinalConfirmationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE5E7EB))
+                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
             ) {
-                Text("Next", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("Next", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun ConfirmSectionHeader(icon: ImageVector, title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF0F9FF), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(Color(0xFFDBEAFE), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(18.dp))
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF111827))
+            Text("Vérifiez et confirmez les détails.", fontSize = 12.sp, color = Color(0xFF6B7280))
         }
     }
 }
@@ -163,24 +215,26 @@ fun ReadOnlyTextField(
     trailingIcon: @Composable (() -> Unit)? = null,
     leadingIcon: @Composable (() -> Unit)? = null
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(8.dp))
-            .background(Color(0xFFF9FAFB), RoundedCornerShape(8.dp))
-            .padding(vertical = 8.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp)) {
-            if (leadingIcon != null) {
-                leadingIcon()
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(label, fontSize = 10.sp, color = Color.Gray)
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(value.ifEmpty { "-" }, fontSize = 14.sp, color = Color.Black, fontWeight = FontWeight.Medium)
-            }
-            if (trailingIcon != null) {
-                trailingIcon()
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(label, fontSize = 12.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(14.dp))
+                .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(14.dp))
+                .padding(14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (leadingIcon != null) leadingIcon()
+                Text(
+                    value.ifEmpty { "-" },
+                    fontSize = 14.sp,
+                    color = Color(0xFF111827),
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                if (trailingIcon != null) trailingIcon()
             }
         }
     }
@@ -197,11 +251,8 @@ fun BoardingPassCard(passengerName: String) {
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Header
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -218,14 +269,10 @@ fun BoardingPassCard(passengerName: String) {
                 }
             }
 
-            // Dashed Line with Cutouts
             CutoutDashedLine()
 
-            // Flight Path
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -240,11 +287,8 @@ fun BoardingPassCard(passengerName: String) {
                 }
             }
 
-            // Times
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
@@ -265,11 +309,8 @@ fun BoardingPassCard(passengerName: String) {
             CutoutDashedLine()
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Passenger Info
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -286,26 +327,23 @@ fun BoardingPassCard(passengerName: String) {
             CutoutDashedLine()
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Barcode Mock
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Simulate barcode lines
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(modifier = Modifier.height(60.dp), horizontalArrangement = Arrangement.Center) {
                     val widths = listOf(2.dp, 4.dp, 1.dp, 6.dp, 2.dp, 3.dp, 1.dp, 4.dp, 2.dp, 5.dp, 1.dp, 2.dp, 4.dp, 2.dp, 1.dp, 3.dp, 2.dp, 4.dp, 1.dp, 6.dp)
                     for (width in widths) {
-                        Box(modifier = Modifier
-                            .width(width)
-                            .fillMaxHeight()
-                            .background(Color.Black))
+                        Box(modifier = Modifier.width(width).fillMaxHeight().background(Color.Black))
                         Spacer(modifier = Modifier.width(2.dp))
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("8 3 6 K 8 9 0 2 K G M 3 Q 1 7 S 0", fontSize = 10.sp, letterSpacing = 2.sp, color = Color.Gray)
+                Text(
+                    "8 3 6 K 8 9 0 2 K G M 3 Q 1 7 S 0",
+                    fontSize = 10.sp,
+                    letterSpacing = 2.sp,
+                    color = Color.Gray
+                )
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
@@ -313,11 +351,7 @@ fun BoardingPassCard(passengerName: String) {
 
 @Composable
 fun CutoutDashedLine() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Left cutout
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(width = 10.dp, height = 20.dp)
@@ -326,7 +360,6 @@ fun CutoutDashedLine() {
                     shape = RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)
                 )
         )
-        // Dashed line
         Canvas(
             modifier = Modifier
                 .weight(1f)
@@ -341,7 +374,6 @@ fun CutoutDashedLine() {
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
             )
         }
-        // Right cutout
         Box(
             modifier = Modifier
                 .size(width = 10.dp, height = 20.dp)
@@ -351,16 +383,4 @@ fun CutoutDashedLine() {
                 )
         )
     }
-}
-
-private fun formatDate(mrzDate: String): String {
-    if (mrzDate.length == 6) {
-        val yy = mrzDate.substring(0, 2)
-        val mm = mrzDate.substring(2, 4)
-        val dd = mrzDate.substring(4, 6)
-        val yyInt = yy.toIntOrNull() ?: 0
-        val yearPrefix = if (yyInt > 30) "19" else "20"
-        return "$dd/$mm/$yearPrefix$yy"
-    }
-    return mrzDate
 }
