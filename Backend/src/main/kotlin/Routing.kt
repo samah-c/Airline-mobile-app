@@ -11,6 +11,7 @@ fun Application.configureRouting() {
             call.respondText("Airline Check-In API")
         }
         authRoutes(authService)
+        userRoutes(authService)
         flightRoutes(flightService)
         notificationRoutes(notificationService)
         checkInRoutes(checkInService)

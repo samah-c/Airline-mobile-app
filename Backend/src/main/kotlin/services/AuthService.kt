@@ -1,6 +1,7 @@
 package com.example.services
 
 import com.example.models.RegisterRequest
+import com.example.models.UpdateProfileRequest
 import com.example.models.UserResponse
 import com.example.schemas.Users
 import com.example.schemas.dbQuery
@@ -77,6 +78,26 @@ class AuthService(private val database: Database) {
                 it[phoneNumber] = ""
             }[Users.id]
             Pair(userId, true)
+        }
+    }
+
+    suspend fun getUserById(userId: Int): UserResponse? = dbQuery {
+        Users.selectAll()
+            .where { Users.id eq userId }
+            .singleOrNull()?.let {
+                UserResponse(
+                    id = it[Users.id],
+                    name = it[Users.name],
+                    email = it[Users.email],
+                    phoneNumber = it[Users.phoneNumber]
+                )
+            }
+    }
+
+    suspend fun updateProfile(userId: Int, request: UpdateProfileRequest) = dbQuery {
+        Users.update({ Users.id eq userId }) {
+            it[name] = request.name
+            it[phoneNumber] = request.phoneNumber
         }
     }
 }

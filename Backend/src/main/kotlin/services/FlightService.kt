@@ -58,4 +58,42 @@ class FlightService(private val database: Database) {
 
         FlightLookupResponse(booking, flight, canCheckIn)
     }
+
+    suspend fun getFlightHistory(userId: Int): List<FlightLookupResponse> = dbQuery {
+        Bookings.selectAll()
+            .where { Bookings.passengerId eq userId }
+            .mapNotNull { booking ->
+                val flight = Flights.selectAll()
+                    .where { Flights.id eq booking[Bookings.flightId] }
+                    .singleOrNull() ?: return@mapNotNull null
+
+                val departure = LocalDateTime.parse(booking[Bookings.flightId].let {
+                    Flights.selectAll().where { Flights.id eq it }.single()[Flights.departureTime]
+                })
+                val now = LocalDateTime.now()
+                val canCheckIn = now.isAfter(departure.minusHours(24)) &&
+                        now.isBefore(departure)
+
+                FlightLookupResponse(
+                    booking = Booking(
+                        id = booking[Bookings.id],
+                        bookingReference = booking[Bookings.bookingReference],
+                        passengerId = booking[Bookings.passengerId],
+                        flightId = booking[Bookings.flightId],
+                        passengerLastName = booking[Bookings.passengerLastName],
+                        checkInStatus = booking[Bookings.checkInStatus]
+                    ),
+                    flight = Flight(
+                        id = flight[Flights.id],
+                        flightNumber = flight[Flights.flightNumber],
+                        origin = flight[Flights.origin],
+                        destination = flight[Flights.destination],
+                        departureTime = flight[Flights.departureTime],
+                        arrivalTime = flight[Flights.arrivalTime],
+                        availableSeats = flight[Flights.availableSeats]
+                    ),
+                    canCheckIn = canCheckIn
+                )
+            }
+    }
 }

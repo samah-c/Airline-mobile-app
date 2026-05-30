@@ -33,3 +33,8 @@ data class UserResponse(
 data class GoogleSignInRequest(
     val idToken: String
 )
+@Serializable
+data class UpdateProfileRequest(
+    val name: String,
+    val phoneNumber: String
+)
