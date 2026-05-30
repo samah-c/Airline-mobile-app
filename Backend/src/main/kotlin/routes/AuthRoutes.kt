@@ -21,22 +21,30 @@ fun Route.authRoutes(authService: AuthService) {
     post("/api/auth/register") {
         val request = call.receive<RegisterRequest>()
 
-        // Validation
-        if (request.email.isBlank() || request.password.isBlank()) {
-            call.respond(HttpStatusCode.BadRequest, "Email and password required")
+        // Validations
+        if (request.name.isBlank()) {
+            call.respond(HttpStatusCode.BadRequest, "Name is required")
+            return@post
+        }
+        if (!request.email.contains("@") || !request.email.contains(".")) {
+            call.respond(HttpStatusCode.BadRequest, "Invalid email format")
+            return@post
+        }
+        if (request.password.length < 8) {
+            call.respond(HttpStatusCode.BadRequest, "Password must be at least 8 characters")
+            return@post
+        }
+        if (request.phoneNumber.isBlank()) {
+            call.respond(HttpStatusCode.BadRequest, "Phone number is required")
             return@post
         }
 
-        // Vérifier email unique
         if (authService.emailExists(request.email)) {
             call.respond(HttpStatusCode.Conflict, "Email already exists")
             return@post
         }
 
-        // Créer l'user
         val userId = authService.register(request)
-
-        // Générer le token JWT
         val token = JWT.create()
             .withAudience(jwtAudience)
             .withIssuer(jwtDomain)

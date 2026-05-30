@@ -5,7 +5,10 @@ import com.example.schemas.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.Database
 
-class CheckInService(private val database: Database) {
+class CheckInService(
+    private val database: Database,
+    private val notificationService: NotificationService
+) {
 
     // Étape 1 — Démarrer le check-in
     suspend fun startCheckIn(bookingId: Int): CheckInSession = dbQuery {
@@ -67,24 +70,60 @@ class CheckInService(private val database: Database) {
     }
 
     // Étape 5 — Préférences spéciales
-    suspend fun saveSpecialRequests(request: SpecialRequestsRequest): CheckInSession = dbQuery {
-        CheckIns.update({ CheckIns.id eq request.checkInId }) {
-            it[dietaryPreference] = request.dietaryPreference
-            it[needsWheelchair] = request.needsWheelchair
-            it[needsVisualAssistance] = request.needsVisualAssistance
-            it[needsHearingAssistance] = request.needsHearingAssistance
-            it[travellingWithInfant] = request.travellingWithInfant
-            it[travellingWithPet] = request.travellingWithPet
-            it[status] = "COMPLETED"
+    suspend fun saveSpecialRequests(request: SpecialRequestsRequest): CheckInSession {
+
+        // 1. Sauvegarder en DB (dans dbQuery)
+        val checkIn = dbQuery {
+            CheckIns.update({ CheckIns.id eq request.checkInId }) {
+                it[dietaryPreference] = request.dietaryPreference
+                it[needsWheelchair] = request.needsWheelchair
+                it[needsVisualAssistance] = request.needsVisualAssistance
+                it[needsHearingAssistance] = request.needsHearingAssistance
+                it[travellingWithInfant] = request.travellingWithInfant
+                it[travellingWithPet] = request.travellingWithPet
+                it[status] = "COMPLETED"
+            }
+
+            val session = getCheckIn(request.checkInId)!!
+
+            // Marquer le booking comme completed
+            Bookings.update({ Bookings.id eq session.bookingId }) {
+                it[checkInStatus] = "COMPLETED"
+            }
+
+            // Récupérer infos pour la notification
+            val booking = Bookings.selectAll()
+                .where { Bookings.id eq session.bookingId }
+                .single()
+
+            val flight = Flights.selectAll()
+                .where { Flights.id eq booking[Bookings.flightId] }
+                .single()
+
+            Triple(
+                session,
+                booking[Bookings.passengerId],
+                flight[Flights.flightNumber]
+            )
         }
 
-        // Marquer le booking comme checked in
-        Bookings.update({ Bookings.id eq getCheckIn(request.checkInId)!!.bookingId }) {
-            it[checkInStatus] = "COMPLETED"
+        val (session, userId, flightNumber) = checkIn
+
+        // 2. Envoyer notification (en dehors de dbQuery)
+        try {
+            notificationService.sendCheckInConfirmation(
+                userId = userId,
+                flightNumber = flightNumber,
+                seat = session.seatNumber ?: "N/A"
+            )
+        } catch (e: Exception) {
+            // Ne pas bloquer si la notification échoue
+            println("Notification failed: ${e.message}")
         }
 
-        getCheckIn(request.checkInId)!!
+        return session
     }
+}
 
     private suspend fun getCheckIn(id: Int): CheckInSession? = dbQuery {
         CheckIns.selectAll()
@@ -101,4 +140,3 @@ class CheckInService(private val database: Database) {
                 )
             }.singleOrNull()
     }
-}

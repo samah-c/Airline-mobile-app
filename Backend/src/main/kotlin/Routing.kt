@@ -12,6 +12,9 @@ fun Application.configureRouting() {
         }
         authRoutes(authService)
         flightRoutes(flightService)
+        notificationRoutes(notificationService)
         checkInRoutes(checkInService)
+        boardingPassRoutes(boardingPassService)
+        syncRoutes(syncService)
     }
 }
