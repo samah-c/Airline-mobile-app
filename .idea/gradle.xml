@@ -10,6 +10,12 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$/Backend" />
+            <!-- yasmine kettouche was here -->
+       <!-- <option name="externalProjectPath" value="$PROJECT_DIR$/android" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$/android" />
+            <option value="$PROJECT_DIR$/android/app" />  -->
           </set>
         </option>
       </GradleProjectSettings>
