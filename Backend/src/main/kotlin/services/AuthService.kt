@@ -1,11 +1,13 @@
 package com.example.services
 
 import com.example.models.RegisterRequest
+import com.example.models.UpdateProfileRequest
 import com.example.models.UserResponse
 import com.example.schemas.Users
 import com.example.schemas.dbQuery
 import org.jetbrains.exposed.sql.*
 import org.mindrot.jbcrypt.BCrypt
+import java.util.UUID
 
 class AuthService(private val database: Database) {
 
@@ -40,5 +42,62 @@ class AuthService(private val database: Database) {
             email = row[Users.email],
             phoneNumber = row[Users.phoneNumber]
         )
+    }
+
+    suspend fun googleSignIn(idToken: String): Pair<Int, Boolean> = dbQuery {
+        // Vérifier le token Google
+        val verifier = com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier
+            .Builder(
+                com.google.api.client.http.javanet.NetHttpTransport(),
+                com.google.api.client.json.gson.GsonFactory()
+            )
+            .setAudience(listOf("725216303962-vd329i9oeak458pjsam43f94t78rkhmo.apps.googleusercontent.com"))
+            .build()
+
+        val googleIdToken = verifier.verify(idToken)
+            ?: error("Invalid Google token")
+
+        val payload = googleIdToken.payload
+        val email = payload.email
+        val name = payload["name"] as? String ?: email
+
+        // Vérifier si l'user existe déjà
+        val existing = Users.selectAll()
+            .where { Users.email eq email }
+            .singleOrNull()
+
+        if (existing != null) {
+            // User existe → login
+            Pair(existing[Users.id], false)
+        } else {
+            // User nouveau → register
+            val userId = Users.insert {
+                it[Users.name] = name
+                it[Users.email] = email
+                it[passwordHash] = BCrypt.hashpw(UUID.randomUUID().toString(), BCrypt.gensalt())
+                it[phoneNumber] = ""
+            }[Users.id]
+            Pair(userId, true)
+        }
+    }
+
+    suspend fun getUserById(userId: Int): UserResponse? = dbQuery {
+        Users.selectAll()
+            .where { Users.id eq userId }
+            .singleOrNull()?.let {
+                UserResponse(
+                    id = it[Users.id],
+                    name = it[Users.name],
+                    email = it[Users.email],
+                    phoneNumber = it[Users.phoneNumber]
+                )
+            }
+    }
+
+    suspend fun updateProfile(userId: Int, request: UpdateProfileRequest) = dbQuery {
+        Users.update({ Users.id eq userId }) {
+            it[name] = request.name
+            it[phoneNumber] = request.phoneNumber
+        }
     }
 }

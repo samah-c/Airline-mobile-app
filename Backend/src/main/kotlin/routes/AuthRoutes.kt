@@ -3,6 +3,7 @@ package com.example.routes
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.example.models.AuthResponse
+import com.example.models.GoogleSignInRequest
 import com.example.models.LoginRequest
 import com.example.models.RegisterRequest
 import com.example.services.AuthService
@@ -21,22 +22,30 @@ fun Route.authRoutes(authService: AuthService) {
     post("/api/auth/register") {
         val request = call.receive<RegisterRequest>()
 
-        // Validation
-        if (request.email.isBlank() || request.password.isBlank()) {
-            call.respond(HttpStatusCode.BadRequest, "Email and password required")
+        // Validations
+        if (request.name.isBlank()) {
+            call.respond(HttpStatusCode.BadRequest, "Name is required")
+            return@post
+        }
+        if (!request.email.contains("@") || !request.email.contains(".")) {
+            call.respond(HttpStatusCode.BadRequest, "Invalid email format")
+            return@post
+        }
+        if (request.password.length < 8) {
+            call.respond(HttpStatusCode.BadRequest, "Password must be at least 8 characters")
+            return@post
+        }
+        if (request.phoneNumber.isBlank()) {
+            call.respond(HttpStatusCode.BadRequest, "Phone number is required")
             return@post
         }
 
-        // Vérifier email unique
         if (authService.emailExists(request.email)) {
             call.respond(HttpStatusCode.Conflict, "Email already exists")
             return@post
         }
 
-        // Créer l'user
         val userId = authService.register(request)
-
-        // Générer le token JWT
         val token = JWT.create()
             .withAudience(jwtAudience)
             .withIssuer(jwtDomain)
@@ -83,5 +92,27 @@ fun Route.authRoutes(authService: AuthService) {
         // En production → envoyer un vrai email
         // Pour l'instant on simule juste
         call.respond(HttpStatusCode.OK, mapOf("message" to "Reset instructions sent to $email"))
+    }
+
+    post("/api/auth/google") {
+        val request = call.receive<GoogleSignInRequest>()
+
+        try {
+            val (userId, isNew) = authService.googleSignIn(request.idToken)
+
+            val token = JWT.create()
+                .withAudience(jwtAudience)
+                .withIssuer(jwtDomain)
+                .withClaim("userId", userId)
+                .withExpiresAt(Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000))
+                .sign(Algorithm.HMAC256(jwtSecret))
+
+            call.respond(
+                if (isNew) HttpStatusCode.Created else HttpStatusCode.OK,
+                AuthResponse(token, userId)
+            )
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.Unauthorized, "Invalid Google token")
+        }
     }
 }
