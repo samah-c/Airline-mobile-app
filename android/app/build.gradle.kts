@@ -88,6 +88,9 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
+    // ── QR Code (ZXing) ───────────────────────────────────────
+    implementation("com.google.zxing:core:3.5.3")
+
     // ── Tests ─────────────────────────────────────────────────
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -14,6 +14,8 @@ data class BoardingPassUiState(
     val boardingPass: BoardingPassModel = BoardingPassModel(),
     val isLoading: Boolean = false,
     val isGenerating: Boolean = false,
+    val isDownloadingPdf: Boolean = false,
+    val pdfBytes: ByteArray? = null,
     val error: String? = null
 )
 
@@ -53,6 +55,18 @@ class BoardingPassViewModel(
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isGenerating = false, error = e.message)
+            }
+        }
+    }
+
+    fun downloadPdf(checkInId: Int) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isDownloadingPdf = true)
+            try {
+                val bytes = repository.downloadPdf(checkInId)
+                _uiState.value = _uiState.value.copy(isDownloadingPdf = false, pdfBytes = bytes)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isDownloadingPdf = false, error = e.message)
             }
         }
     }

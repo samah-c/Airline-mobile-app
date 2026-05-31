@@ -20,8 +20,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.airline.R
-import com.example.airline.ui.theme.GrayText
 import com.example.airline.ui.theme.DarkText
+import com.example.airline.ui.theme.GrayText
 import kotlinx.coroutines.delay
 
 @Composable
@@ -32,31 +32,31 @@ fun SplashScreen(onNavigateToOnboarding: () -> Unit) {
     }
 
     Column(
-        modifier = Modifier
+        modifier            = Modifier
             .fillMaxSize()
             .background(Color.White),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.ic_app_logo),
-            contentDescription = "EnTatto logo",
-            modifier = Modifier.size(88.dp)
+            painter            = painterResource(id = R.drawable.ic_app_logo),
+            contentDescription = "Airline logo",
+            modifier           = Modifier.size(88.dp)
         )
         Spacer(modifier = Modifier.height(20.dp))
         Text(
-            text = "EnTatto",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = DarkText,
+            text          = "Airline",
+            fontSize      = 28.sp,
+            fontWeight    = FontWeight.Bold,
+            color         = DarkText,
             letterSpacing = 0.5.sp
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "a True Tattoo Artist",
-            fontSize = 14.sp,
+            text       = "Your travelling companion",
+            fontSize   = 14.sp,
             fontWeight = FontWeight.Normal,
-            color = GrayText
+            color      = GrayText
         )
     }
 }

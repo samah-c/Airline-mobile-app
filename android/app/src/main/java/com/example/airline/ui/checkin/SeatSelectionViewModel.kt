@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 data class SeatSelectionUiState(
     val selectedSeats: Set<String> = emptySet(),
     val availableSeats: List<SeatModel> = emptyList(),
+    val occupiedFromApi: Set<String> = emptySet(),
     val isLoading: Boolean = false,
     val isConfirming: Boolean = false,
     val error: String? = null,
@@ -31,7 +32,8 @@ class SeatSelectionViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val seats = repository.getSeats(flightId)
-                _uiState.value = _uiState.value.copy(availableSeats = seats, isLoading = false)
+                val occupied = seats.filter { it.state == SeatStateType.OCCUPIED }.map { it.id }.toSet()
+                _uiState.value = _uiState.value.copy(availableSeats = seats, occupiedFromApi = occupied, isLoading = false)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             }

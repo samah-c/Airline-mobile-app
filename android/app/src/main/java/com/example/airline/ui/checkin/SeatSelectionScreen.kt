@@ -143,9 +143,10 @@ fun SeatSelectionScreen(
     onNext: () -> Unit = {},
     viewModel: SeatSelectionViewModel = viewModel(factory = SeatSelectionViewModel.Factory())
 ) {
-    val uiState       by viewModel.uiState.collectAsState()
-    val selectedSeats  = uiState.selectedSeats
-    val seatMap        = remember { buildSeatMap() }
+    val uiState        by viewModel.uiState.collectAsState()
+    val selectedSeats   = uiState.selectedSeats
+    val occupiedFromApi = uiState.occupiedFromApi
+    val seatMap         = remember { buildSeatMap() }
 
     LaunchedEffect(flightId) { viewModel.loadSeats(flightId) }
 
@@ -167,7 +168,7 @@ fun SeatSelectionScreen(
 
                 items(seatMap) { item ->
                     when (item) {
-                        is RowItem.SeatRow -> SeatRowItem(item, selectedSeats) { id ->
+                        is RowItem.SeatRow -> SeatRowItem(item, selectedSeats, occupiedFromApi) { id ->
                             viewModel.toggleSeat(id)
                         }
                         RowItem.ExitRow  -> ExitRowContent()
@@ -527,7 +528,7 @@ private fun PlaneBodyRow(content: @Composable () -> Unit) {
 // ── Seat row ──────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SeatRowItem(item: RowItem.SeatRow, selectedSeats: Set<String>, onSelect: (String) -> Unit) {
+private fun SeatRowItem(item: RowItem.SeatRow, selectedSeats: Set<String>, occupiedFromApi: Set<String>, onSelect: (String) -> Unit) {
     val aisleIdx   = item.seats.indexOfFirst { it == null }.takeIf { it >= 0 } ?: item.seats.size
     val leftSeats  = item.seats.take(aisleIdx).filterNotNull()
     val rightSeats = item.seats.drop(aisleIdx + 1).filterNotNull()
@@ -541,7 +542,7 @@ private fun SeatRowItem(item: RowItem.SeatRow, selectedSeats: Set<String>, onSel
             verticalAlignment     = Alignment.CenterVertically
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                leftSeats.forEach { s -> SeatItem(s, s.id in selectedSeats) { onSelect(s.id) } }
+                leftSeats.forEach { s -> SeatItem(s, s.id in selectedSeats, s.id in occupiedFromApi) { onSelect(s.id) } }
             }
             Spacer(modifier = Modifier.width(6.dp))
             Text(
@@ -553,7 +554,7 @@ private fun SeatRowItem(item: RowItem.SeatRow, selectedSeats: Set<String>, onSel
             )
             Spacer(modifier = Modifier.width(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                rightSeats.forEach { s -> SeatItem(s, s.id in selectedSeats) { onSelect(s.id) } }
+                rightSeats.forEach { s -> SeatItem(s, s.id in selectedSeats, s.id in occupiedFromApi) { onSelect(s.id) } }
             }
         }
     }
@@ -579,20 +580,22 @@ private fun ExitRowContent() {
 // ── Seat item ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SeatItem(seat: SeatInfo, isSelected: Boolean, onClick: () -> Unit) {
+private fun SeatItem(seat: SeatInfo, isSelected: Boolean, isOccupiedByApi: Boolean = false, onClick: () -> Unit) {
     val bg = when {
-        isSelected                                                                -> SelectedColor
+        isSelected       -> SelectedColor
+        isOccupiedByApi  -> SeatOccupied
         seat.state == SeatState.AVAILABLE && seat.seatClass == SeatClass.FIRST   -> FirstClassAvailable
         seat.state == SeatState.AVAILABLE && seat.seatClass == SeatClass.ECONOMY -> EconomyAvailable
-        else                                                                      -> SeatOccupied
+        else             -> SeatOccupied
     }
     val w = if (seat.seatClass == SeatClass.FIRST) 30.dp else 22.dp
     val h = if (seat.seatClass == SeatClass.FIRST) 40.dp else 32.dp
+    val clickable = !isOccupiedByApi && seat.state == SeatState.AVAILABLE
     Box(
         modifier         = Modifier
             .size(width = w, height = h)
             .background(bg, RoundedCornerShape(4.dp))
-            .clickable(enabled = seat.state == SeatState.AVAILABLE) { onClick() },
+            .clickable(enabled = clickable) { onClick() },
         contentAlignment = Alignment.Center
     ) {
         if (isSelected) {
