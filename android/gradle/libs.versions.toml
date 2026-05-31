@@ -7,7 +7,7 @@ espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
 kotlin = "2.0.21"
-
+ksp = "2.0.21-1.0.28"
 # ✅ Compose BOM récent + versions explicites pour libs non gérées par le BOM
 composeBom = "2025.05.00"
 navigationCompose = "2.8.4"

@@ -18,6 +18,7 @@ import com.example.airline.ui.checkin.CheckInViewModel
 import com.example.airline.ui.confirmation.ConfirmationScreen
 import com.example.airline.ui.flighthistory.FlightHistoryScreen
 import com.example.airline.ui.forgotpassword.ForgotPasswordScreen
+import com.example.airline.ui.homepage.HomeScreen
 import com.example.airline.ui.login.LoginScreen
 import com.example.airline.ui.profile.ProfileScreen
 import com.example.airline.ui.scan.PassportScanScreen
@@ -61,7 +62,7 @@ fun AppNavGraph(
             LoginScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onLoginSuccess = {
-                    navController.navigate(Routes.PROFILE) {
+                        navController.navigate(Routes.HOME) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
@@ -106,12 +107,14 @@ fun AppNavGraph(
 
         // ── Home (placeholder) ────────────────────────────────
         composable(Routes.HOME) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "Home Screen — Connecté !", fontSize = 24.sp)
-            }
+            HomeScreen(
+                onSearchFlight = { pnr, lastName ->
+                    navController.navigate(Routes.CHECKIN)
+                },
+                onNavigateBaggage  = { navController.navigate(Routes.BAGGAGE) },
+                onNavigateCheckin  = { navController.navigate(Routes.CHECKIN) },
+                onNavigateProfile  = { navController.navigate(Routes.PROFILE) }
+            )
         }
 
         // ── Profil & Settings ─────────────────────────────────

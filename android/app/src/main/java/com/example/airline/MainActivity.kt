@@ -11,7 +11,9 @@ import androidx.navigation.compose.rememberNavController
 import com.example.airline.navigation.AppNavGraph
 import com.example.airline.ui.theme.AirlineTheme
 import com.google.firebase.messaging.FirebaseMessaging
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
