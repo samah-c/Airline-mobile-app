@@ -27,6 +27,7 @@ import com.example.airline.ui.services.ServicesScreen
 import com.example.airline.ui.settings.SettingsScreen
 import com.example.airline.ui.signup.SignUpScreen
 import com.example.airline.ui.verification.VerificationScreen
+import com.example.airline.ui.flightlookup.FlightLookUpResultScreen
 
 object Routes {
     const val LOGIN             = "login"
@@ -42,6 +43,8 @@ object Routes {
     const val CONFIRM_DETAILS   = "confirm_details"
     const val SERVICES          = "services"
     const val FINAL_CONFIRMATION = "final_confirmation"
+    const val FLIGHT_LOOKUP_RESULT = "flight_lookup_result/{pnr}/{lastName}"
+
 }
 
 @Composable
@@ -109,7 +112,7 @@ fun AppNavGraph(
         composable(Routes.HOME) {
             HomeScreen(
                 onSearchFlight = { pnr, lastName ->
-                    navController.navigate(Routes.CHECKIN)
+                    navController.navigate("flight_lookup_result/$pnr/$lastName")
                 },
                 onNavigateBaggage  = { navController.navigate(Routes.BAGGAGE) },
                 onNavigateCheckin  = { navController.navigate(Routes.CHECKIN) },
@@ -223,6 +226,17 @@ fun AppNavGraph(
                     }
                 },
                 onNext = { }
+            )
+        }
+
+        composable(Routes.FLIGHT_LOOKUP_RESULT) { backStackEntry ->
+            val pnr = backStackEntry.arguments?.getString("pnr") ?: ""
+            val lastName = backStackEntry.arguments?.getString("lastName") ?: ""
+            FlightLookUpResultScreen(
+                onCheckIn      = { navController.navigate(Routes.CHECKIN) },
+                onNavigateHome = { navController.navigate(Routes.HOME) },
+                onNavigateBaggage = { navController.navigate(Routes.BAGGAGE) },
+                onNavigateProfile = { navController.navigate(Routes.PROFILE) }
             )
         }
     }
