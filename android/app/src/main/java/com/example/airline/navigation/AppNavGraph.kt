@@ -13,34 +13,44 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.airline.ui.baggage.BaggageScreen
+import com.example.airline.ui.checkin.BoardingPassOfflineScreen
+import com.example.airline.ui.checkin.BoardingPassScreen
 import com.example.airline.ui.checkin.CheckInScreen
 import com.example.airline.ui.checkin.CheckInViewModel
+import com.example.airline.ui.checkin.SeatSelectionScreen
 import com.example.airline.ui.confirmation.ConfirmationScreen
 import com.example.airline.ui.flighthistory.FlightHistoryScreen
 import com.example.airline.ui.forgotpassword.ForgotPasswordScreen
 import com.example.airline.ui.login.LoginScreen
+import com.example.airline.ui.onboarding.OnboardingScreen
 import com.example.airline.ui.profile.ProfileScreen
 import com.example.airline.ui.scan.PassportScanScreen
 import com.example.airline.ui.scan.PassportScanViewModel
 import com.example.airline.ui.services.ServicesScreen
 import com.example.airline.ui.settings.SettingsScreen
 import com.example.airline.ui.signup.SignUpScreen
+import com.example.airline.ui.splash.SplashScreen
 import com.example.airline.ui.verification.VerificationScreen
 
 object Routes {
-    const val LOGIN             = "login"
-    const val SIGNUP            = "signup"
-    const val FORGOT_PASSWORD   = "forgot_password"
-    const val HOME              = "home"
-    const val PROFILE           = "profile"
-    const val FLIGHT_HISTORY    = "flight_history"
-    const val SETTINGS          = "settings"
-    const val BAGGAGE           = "baggage"
-    const val CHECKIN           = "checkin"
-    const val SCAN              = "scan"
-    const val CONFIRM_DETAILS   = "confirm_details"
-    const val SERVICES          = "services"
+    const val SPLASH             = "splash"
+    const val ONBOARDING         = "onboarding"
+    const val LOGIN              = "login"
+    const val SIGNUP             = "signup"
+    const val FORGOT_PASSWORD    = "forgot_password"
+    const val HOME               = "home"
+    const val PROFILE            = "profile"
+    const val FLIGHT_HISTORY     = "flight_history"
+    const val SETTINGS           = "settings"
+    const val BAGGAGE            = "baggage"
+    const val CHECKIN            = "checkin"
+    const val SCAN               = "scan"
+    const val CONFIRM_DETAILS    = "confirm_details"
+    const val SERVICES           = "services"
     const val FINAL_CONFIRMATION = "final_confirmation"
+    const val SEAT_SELECTION     = "seat_selection"
+    const val BOARDING_PASS      = "boarding_pass"
+    const val BOARDING_PASS_OFFLINE = "boarding_pass_offline"
 }
 
 @Composable
@@ -53,8 +63,29 @@ fun AppNavGraph(
 
     NavHost(
         navController = navController,
-        startDestination = Routes.LOGIN
+        startDestination = Routes.SPLASH
     ) {
+
+        // ── Splash & Onboarding ───────────────────────────────
+        composable(Routes.SPLASH) {
+            SplashScreen(
+                onNavigateToOnboarding = {
+                    navController.navigate(Routes.ONBOARDING) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.ONBOARDING) {
+            OnboardingScreen(
+                onGetStarted = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.ONBOARDING) { inclusive = true }
+                    }
+                }
+            )
+        }
 
         // ── Auth ──────────────────────────────────────────────
         composable(Routes.LOGIN) {
@@ -215,11 +246,38 @@ fun AppNavGraph(
                 viewModel = checkInViewModel,
                 onBack = { navController.popBackStack() },
                 onConfirm = {
-                    navController.navigate(Routes.HOME) {
+                    navController.navigate(Routes.SEAT_SELECTION) {
                         popUpTo(Routes.CHECKIN) { inclusive = true }
                     }
                 },
-                onNext = { }
+                onNext = {
+                    navController.navigate(Routes.SEAT_SELECTION)
+                }
+            )
+        }
+
+        // ── Feriel's screens ──────────────────────────────────
+        composable(Routes.SEAT_SELECTION) {
+            SeatSelectionScreen(
+                onBack = { navController.popBackStack() },
+                onNext = {
+                    navController.navigate(Routes.BOARDING_PASS)
+                }
+            )
+        }
+
+        composable(Routes.BOARDING_PASS) {
+            BoardingPassScreen(
+                onBack = { navController.popBackStack() },
+                onDownload = {
+                    navController.navigate(Routes.BOARDING_PASS_OFFLINE)
+                }
+            )
+        }
+
+        composable(Routes.BOARDING_PASS_OFFLINE) {
+            BoardingPassOfflineScreen(
+                onBack = { navController.popBackStack() }
             )
         }
     }

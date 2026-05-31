@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 data class BoardingPassUiState(
     val boardingPass: BoardingPassModel = BoardingPassModel(),
     val isLoading: Boolean = false,
-    val isDownloading: Boolean = false,
+    val isGenerating: Boolean = false,
     val error: String? = null
 )
 
@@ -23,25 +23,34 @@ class BoardingPassViewModel(
     private val _uiState = MutableStateFlow(BoardingPassUiState())
     val uiState: StateFlow<BoardingPassUiState> = _uiState
 
-    fun loadBoardingPass(flightId: String) {
+    fun loadBoardingPass(checkInId: Int) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val bp = repository.getBoardingPass(flightId)
-                _uiState.value = _uiState.value.copy(boardingPass = bp, isLoading = false)
+                val bp = repository.getBoardingPass(checkInId)
+                if (bp != null) {
+                    _uiState.value = _uiState.value.copy(boardingPass = bp, isLoading = false)
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = "Boarding pass not found")
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
             }
         }
     }
 
-    fun download(flightId: String) {
+    fun generateBoardingPass(checkInId: Int) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isDownloading = true)
+            _uiState.value = _uiState.value.copy(isGenerating = true, error = null)
             try {
-                repository.downloadBoardingPass(flightId)
-            } finally {
-                _uiState.value = _uiState.value.copy(isDownloading = false)
+                val bp = repository.generateBoardingPass(checkInId)
+                if (bp != null) {
+                    _uiState.value = _uiState.value.copy(boardingPass = bp, isGenerating = false)
+                } else {
+                    _uiState.value = _uiState.value.copy(isGenerating = false, error = "Failed to generate boarding pass")
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isGenerating = false, error = e.message)
             }
         }
     }
