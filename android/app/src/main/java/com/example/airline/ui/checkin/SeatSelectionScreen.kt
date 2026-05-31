@@ -25,6 +25,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -135,13 +137,17 @@ private fun buildSeatMap(): List<RowItem> = buildList {
 
 @Composable
 fun SeatSelectionScreen(
+    flightId: Int = 1,
+    checkInId: Int = 1,
     onBack: () -> Unit = {},
     onNext: () -> Unit = {},
     viewModel: SeatSelectionViewModel = viewModel(factory = SeatSelectionViewModel.Factory())
 ) {
-    val uiState   by viewModel.uiState.collectAsState()
-    val selectedSeats = uiState.selectedSeats
-    val seatMap       = remember { buildSeatMap() }
+    val uiState       by viewModel.uiState.collectAsState()
+    val selectedSeats  = uiState.selectedSeats
+    val seatMap        = remember { buildSeatMap() }
+
+    LaunchedEffect(flightId) { viewModel.loadSeats(flightId) }
 
     Column(modifier = Modifier.fillMaxSize().background(Color.White)) {
         SeatHeader(onBack)
@@ -181,10 +187,17 @@ fun SeatSelectionScreen(
                     .width(100.dp)
             )
 
+            // Loading overlay
+            if (uiState.isLoading) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color.White)
+                }
+            }
+
             // Next button — fixed bottom-right
             NextButton(
                 selectedCount = selectedSeats.size,
-                onNext        = onNext,
+                onNext        = { viewModel.confirmSelection(checkInId) { onNext() } },
                 modifier      = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(bottom = 20.dp, end = 16.dp)

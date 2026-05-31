@@ -18,7 +18,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -47,31 +49,55 @@ private val BpOrange = Color(0xFFFF6B1A)
 
 @Composable
 fun BoardingPassScreen(
+    checkInId: Int = 1,
     onBack: () -> Unit = {},
     onDownload: () -> Unit = {},
     viewModel: BoardingPassViewModel = viewModel(factory = BoardingPassViewModel.Factory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    Column(Modifier.fillMaxSize().background(BpBg)) {
-        BpHeader(onBack)
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            TicketCard()
-            BarcodeCard()
+    val bp = uiState.boardingPass
+
+    LaunchedEffect(checkInId) { viewModel.generateBoardingPass(checkInId) }
+
+    Box(Modifier.fillMaxSize().background(BpBg)) {
+        Column(Modifier.fillMaxSize()) {
+            BpHeader(title = "Flight ${bp.flightNumber.ifEmpty { "LH007" }}", onBack = onBack)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                TicketCard(
+                    flightNumber  = bp.flightNumber.ifEmpty  { "LH007" },
+                    gate          = bp.gate.ifEmpty           { "A2" },
+                    origin        = bp.origin.ifEmpty         { "LON" },
+                    originCity    = bp.originCity.ifEmpty     { "London" },
+                    destination   = bp.destination.ifEmpty   { "RIO" },
+                    destCity      = bp.destinationCity.ifEmpty { "Rio de Janeiro" },
+                    passengerName = bp.passengerName.ifEmpty  { "—" },
+                    seat          = bp.seat.ifEmpty           { "—" },
+                    boardingTime  = bp.boardingTime.ifEmpty   { "08:15 AM" },
+                    departureTime = bp.departureTime.ifEmpty  { "08:45 AM" }
+                )
+                BarcodeCard(code = bp.barcode.ifEmpty { "83GKS902KGM3017SD" })
+            }
+            BpDownloadButton(onDownload)
         }
-        BpDownloadButton(onDownload)
+
+        if (uiState.isLoading || uiState.isGenerating) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = BpBlue)
+            }
+        }
     }
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun BpHeader(onBack: () -> Unit) {
+private fun BpHeader(title: String = "Flight LH007", onBack: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -85,7 +111,7 @@ private fun BpHeader(onBack: () -> Unit) {
             modifier = Modifier.align(Alignment.CenterStart).clickable { onBack() }
         )
         Text(
-            text       = "Flight LH007",
+            text       = title,
             fontSize   = 18.sp,
             fontWeight = FontWeight.Bold,
             color      = BpDark,
@@ -97,49 +123,47 @@ private fun BpHeader(onBack: () -> Unit) {
 // ── Ticket card ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun TicketCard() {
+private fun TicketCard(
+    flightNumber: String  = "LH007",
+    gate: String          = "A2",
+    origin: String        = "LON",
+    originCity: String    = "London",
+    destination: String   = "RIO",
+    destCity: String      = "Rio de Janeiro",
+    passengerName: String = "—",
+    seat: String          = "—",
+    boardingTime: String  = "08:15 AM",
+    departureTime: String = "08:45 AM"
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(8.dp, RoundedCornerShape(16.dp))
             .background(Color.White, RoundedCornerShape(16.dp))
     ) {
-        // ① Airline logo + Flight / Gate
+        // ① Flight / Gate
         Row(
-            modifier                  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
-            horizontalArrangement     = Arrangement.SpaceBetween,
-            verticalAlignment         = Alignment.CenterVertically
+            modifier              = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment     = Alignment.CenterVertically
         ) {
             Text("GOL", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, color = BpOrange)
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                BpLabelValue("Flight", "LH007")
-                BpLabelValue("Gate",   "A2")
+                BpLabelValue("Flight", flightNumber)
+                BpLabelValue("Gate",   gate)
             }
         }
 
         Perforation()
 
-        // ② Route (LON → RIO) + times
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)
-        ) {
+        // ② Route + times
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Departure city
                 Column(Modifier.weight(1f)) {
-                    Text("London", fontSize = 13.sp, color = BpLabel)
-                    Text(
-                        "LON",
-                        fontSize   = 50.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color      = BpDark,
-                        lineHeight = 56.sp
-                    )
+                    Text(originCity, fontSize = 13.sp, color = BpLabel)
+                    Text(origin, fontSize = 50.sp, fontWeight = FontWeight.ExtraBold, color = BpDark, lineHeight = 56.sp)
                 }
-                // Dashed line + airplane
-                Box(
-                    modifier         = Modifier.weight(1.2f).height(28.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.weight(1.2f).height(28.dp), contentAlignment = Alignment.Center) {
                     Canvas(Modifier.fillMaxWidth().height(2.dp)) {
                         val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
                         drawLine(BpBlue, Offset(0f, 0f), Offset(size.width * 0.36f, 0f), 1.5.dp.toPx(), pathEffect = dash)
@@ -147,27 +171,17 @@ private fun TicketCard() {
                     }
                     Text("✈", fontSize = 22.sp, color = BpBlue)
                 }
-                // Arrival city
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                    Text("Rio de Janeiro", fontSize = 13.sp, color = BpLabel, textAlign = TextAlign.End)
-                    Text(
-                        "RIO",
-                        fontSize   = 52.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color      = BpDark,
-                        textAlign  = TextAlign.End,
-                        lineHeight = 56.sp
-                    )
+                    Text(destCity, fontSize = 13.sp, color = BpLabel, textAlign = TextAlign.End)
+                    Text(destination, fontSize = 52.sp, fontWeight = FontWeight.ExtraBold, color = BpDark, textAlign = TextAlign.End, lineHeight = 56.sp)
                 }
             }
 
             Spacer(Modifier.height(20.dp))
 
-            // Times row
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                BpTimeColumn("Boarding Time", "08:15 AM")
-                BpTimeColumn("Departs",       "08:45 AM")
-                BpTimeColumn("Departs",       "12:00 PM")
+                BpTimeColumn("Boarding Time", boardingTime)
+                BpTimeColumn("Departs",       departureTime)
             }
         }
 
@@ -181,11 +195,11 @@ private fun TicketCard() {
         ) {
             Column {
                 Text("Passenger", fontSize = 12.sp, color = BpLabel)
-                Text("Jon Bon Jovi", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = BpBlue)
+                Text(passengerName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = BpBlue)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("Seat", fontSize = 12.sp, color = BpLabel)
-                Text("3F", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = BpBlue)
+                Text(seat, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = BpBlue)
             }
         }
 
@@ -234,7 +248,7 @@ private fun Perforation() {
 // ── Barcode card ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun BarcodeCard() {
+private fun BarcodeCard(code: String = "83GKS902KGM3017SD") {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -243,14 +257,9 @@ private fun BarcodeCard() {
             .padding(horizontal = 20.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        BarcodeCanvas(code = "83GKS902KGM3017SD", modifier = Modifier.fillMaxWidth().height(80.dp))
+        BarcodeCanvas(code = code, modifier = Modifier.fillMaxWidth().height(80.dp))
         Spacer(Modifier.height(8.dp))
-        Text(
-            text          = "83GKS902KGM3017SD",
-            fontSize      = 12.sp,
-            letterSpacing = 2.sp,
-            color         = BpDark
-        )
+        Text(text = code, fontSize = 12.sp, letterSpacing = 2.sp, color = BpDark)
     }
 }
 

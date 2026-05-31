@@ -3,6 +3,8 @@ package com.example.airline.ui.checkin
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import com.example.airline.data.model.BoardingPassModel
+import com.example.airline.data.repository.OfflineBoardingPassCache
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,10 +55,24 @@ data class SavedBoardingPass(
 
 @Composable
 fun BoardingPassOfflineScreen(onBack: () -> Unit = {}) {
-    val savedPasses = listOf(
-        SavedBoardingPass("Feb 18, 2022", "08:15 AM", "LON", "London", "RIO", "Rio de Janeiro"),
-        SavedBoardingPass("Feb 18, 2022", "08:15 AM", "LON", "London", "RIO", "Rio de Janeiro")
-    )
+    val cachedPasses = remember { OfflineBoardingPassCache.getAll() }
+    val savedPasses = if (cachedPasses.isNotEmpty()) {
+        cachedPasses.map { bp ->
+            SavedBoardingPass(
+                date       = bp.departureTime.ifEmpty { "—" },
+                time       = bp.boardingTime.ifEmpty  { "—" },
+                originCode = bp.origin.ifEmpty        { "—" },
+                originCity = bp.originCity.ifEmpty    { "—" },
+                destCode   = bp.destination.ifEmpty   { "—" },
+                destCity   = bp.destinationCity.ifEmpty { "—" }
+            )
+        }
+    } else {
+        listOf(
+            SavedBoardingPass("Feb 18, 2022", "08:15 AM", "LON", "London", "RIO", "Rio de Janeiro"),
+            SavedBoardingPass("Feb 18, 2022", "08:15 AM", "LON", "London", "RIO", "Rio de Janeiro")
+        )
+    }
 
     Column(
         modifier = Modifier
