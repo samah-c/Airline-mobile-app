@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "719458110731",
+    "project_id": "airline-app-tdm",
+    "storage_bucket": "airline-app-tdm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:719458110731:android:2905580203039129d1660e",
+        "android_client_info": {
+          "package_name": "com.example.airline"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkMvAs5Xs2LTappVt2afUFVGPYbDSBMXk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
