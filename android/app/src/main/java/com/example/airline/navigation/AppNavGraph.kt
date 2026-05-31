@@ -7,66 +7,60 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.airline.ui.baggage.BaggageScreen
+import com.example.airline.ui.checkin.CheckInScreen
+import com.example.airline.ui.checkin.CheckInViewModel
+import com.example.airline.ui.confirmation.ConfirmationScreen
 import com.example.airline.ui.flighthistory.FlightHistoryScreen
 import com.example.airline.ui.forgotpassword.ForgotPasswordScreen
 import com.example.airline.ui.login.LoginScreen
-//import com.example.airline.ui.onboarding.OnboardingScreen
 import com.example.airline.ui.profile.ProfileScreen
+import com.example.airline.ui.scan.PassportScanScreen
+import com.example.airline.ui.scan.PassportScanViewModel
+import com.example.airline.ui.services.ServicesScreen
 import com.example.airline.ui.settings.SettingsScreen
 import com.example.airline.ui.signup.SignUpScreen
-//import com.example.airline.ui.splash.SplashScreen
+import com.example.airline.ui.verification.VerificationScreen
 
 object Routes {
-    const val SPLASH         = "splash"
-    const val ONBOARDING     = "onboarding"
-    const val LOGIN          = "login"
-    const val SIGNUP         = "signup"
-    const val FORGOT_PASSWORD = "forgot_password"
-    const val HOME           = "home"
-    const val BAGGAGE = "baggage"
-    const val PROFILE = "profile"
-    const val FLIGHT_HISTORY = "flight_history"
-    const val SETTINGS = "settings"
+    const val LOGIN             = "login"
+    const val SIGNUP            = "signup"
+    const val FORGOT_PASSWORD   = "forgot_password"
+    const val HOME              = "home"
+    const val PROFILE           = "profile"
+    const val FLIGHT_HISTORY    = "flight_history"
+    const val SETTINGS          = "settings"
+    const val BAGGAGE           = "baggage"
+    const val CHECKIN           = "checkin"
+    const val SCAN              = "scan"
+    const val CONFIRM_DETAILS   = "confirm_details"
+    const val SERVICES          = "services"
+    const val FINAL_CONFIRMATION = "final_confirmation"
 }
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController()
 ) {
+    // CheckInViewModel partagé entre toutes les étapes du check-in
+    val checkInViewModel: CheckInViewModel = viewModel()
+    val passportScanViewModel: PassportScanViewModel = viewModel()
+
     NavHost(
         navController = navController,
-        startDestination = Routes.SPLASH
+        startDestination = Routes.LOGIN
     ) {
-       /* composable(Routes.SPLASH) {
-            SplashScreen(
-                onNavigateToOnboarding = {
-                    navController.navigate(Routes.ONBOARDING) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
-                    }
-                }
-            )
-        }
 
-        composable(Routes.ONBOARDING) {
-            OnboardingScreen(
-                onGetStarted = {
-                    navController.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.ONBOARDING) { inclusive = true }
-                    }
-                }
-            )
-        }*/
-
+        // ── Auth ──────────────────────────────────────────────
         composable(Routes.LOGIN) {
             LoginScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onLoginSuccess = {
-                    // Remplace HOME par ton écran principal plus tard
                     navController.navigate(Routes.PROFILE) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
@@ -110,25 +104,17 @@ fun AppNavGraph(
             )
         }
 
-        // Placeholder pour l'écran principal (Home/Dashboard)
+        // ── Home (placeholder) ────────────────────────────────
         composable(Routes.HOME) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = " Home Screen — Connecté !", fontSize = 24.sp)
+                Text(text = "Home Screen — Connecté !", fontSize = 24.sp)
             }
         }
 
-        composable(Routes.BAGGAGE) {
-            BaggageScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onConfirm = {
-                    // Rediriger vers Payment ou Booking Confirmation
-                    navController.navigate(Routes.HOME)
-                }
-            )
-        }
+        // ── Profil & Settings ─────────────────────────────────
         composable(Routes.PROFILE) {
             ProfileScreen(
                 onNavigateBack = { navController.popBackStack() },
@@ -140,6 +126,7 @@ fun AppNavGraph(
                 }
             )
         }
+
         composable(Routes.FLIGHT_HISTORY) {
             FlightHistoryScreen(
                 onNavigateBack = { navController.popBackStack() }
@@ -153,11 +140,86 @@ fun AppNavGraph(
                     navController.navigate(Routes.PROFILE)
                 },
                 onLogout = {
-                    // Retour à l'écran de login avec cleanup
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        // ── Baggage ───────────────────────────────────────────
+        composable(Routes.BAGGAGE) {
+            BaggageScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onConfirm = {
+                    navController.navigate(Routes.HOME)
+                }
+            )
+        }
+
+        // ── Flux Check-In (ViewModel partagé) ─────────────────
+        composable(Routes.CHECKIN) {
+            CheckInScreen(
+                viewModel = checkInViewModel,
+                onScanPassport = {
+                    navController.navigate(Routes.SCAN)
+                },
+                onVerification = {
+                    navController.navigate(Routes.CONFIRM_DETAILS)
+                },
+                onFlightOptions = {
+                    navController.navigate(Routes.SERVICES)
+                },
+                onFinish = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Routes.SCAN) {
+            PassportScanScreen(
+                viewModel = passportScanViewModel,
+                onBack = { navController.popBackStack() },
+                onMrzExtracted = { mrzData ->
+                    checkInViewModel.initFromMrz(mrzData)
+                    navController.navigate(Routes.CONFIRM_DETAILS)
+                }
+            )
+        }
+
+        composable(Routes.CONFIRM_DETAILS) {
+            VerificationScreen(
+                viewModel = checkInViewModel,
+                onBack = { navController.popBackStack() },
+                onConfirm = {
+                    navController.navigate(Routes.SERVICES)
+                }
+            )
+        }
+
+        composable(Routes.SERVICES) {
+            ServicesScreen(
+                viewModel = checkInViewModel,
+                onBack = { navController.popBackStack() },
+                onConfirm = {
+                    navController.navigate(Routes.FINAL_CONFIRMATION)
+                },
+                onSkip = {
+                    navController.navigate(Routes.FINAL_CONFIRMATION)
+                }
+            )
+        }
+
+        composable(Routes.FINAL_CONFIRMATION) {
+            ConfirmationScreen(
+                viewModel = checkInViewModel,
+                onBack = { navController.popBackStack() },
+                onConfirm = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.CHECKIN) { inclusive = true }
+                    }
+                },
+                onNext = { }
             )
         }
     }

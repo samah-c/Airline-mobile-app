@@ -1,14 +1,17 @@
 package com.example.airline.ui.login
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.airline.notifications.TokenRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class LoginViewModel : ViewModel() {
+class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -69,6 +72,8 @@ class LoginViewModel : ViewModel() {
 
                 if (mockSuccess) {
                     _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
+                    TokenRepository.fetchAndSaveToken(getApplication())
+
                     onSuccess()
                 } else {
                     throw Exception("Invalid credentials")

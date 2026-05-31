@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -76,6 +77,10 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("com.google.mlkit:text-recognition:16.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
+    // Firebase BOM — gère les versions automatiquement
+    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
 
     // ── Tests ─────────────────────────────────────────────────
     testImplementation(libs.junit)

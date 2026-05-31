@@ -1,84 +1,44 @@
 package com.example.airline
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.navigation.compose.rememberNavController
+import com.example.airline.navigation.AppNavGraph
 import com.example.airline.ui.theme.AirlineTheme
-import com.example.airline.ui.checkin.CheckInViewModel
-import com.example.airline.ui.confirmation.ConfirmationScreen
-import com.example.airline.ui.scan.PassportScanScreen
-import com.example.airline.ui.checkin.CheckInScreen
-import com.example.airline.ui.scan.PassportScanViewModel
-import com.example.airline.ui.services.ServicesScreen
-import com.example.airline.ui.verification.VerificationScreen
-
-// Flux de navigation : CHECKIN → SCAN → CONFIRM_DETAILS → SERVICES → FINAL_CONFIRMATION
-enum class AppScreen {
-    CHECKIN, SCAN, CONFIRM_DETAILS, SERVICES, FINAL_CONFIRMATION
-}
+import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : ComponentActivity() {
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* isGranted */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Test Firebase
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                android.util.Log.d("FCM_TEST", "Token OK: ${task.result}")
+            } else {
+                android.util.Log.e("FCM_TEST", "Token FAILED: ${task.exception?.message}")
+            }
+        }
         enableEdgeToEdge()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
         setContent {
             AirlineTheme {
-                var currentScreen by remember { mutableStateOf(AppScreen.CHECKIN) }
-
-                // ViewModel partagé entre tous les écrans
-                val checkInViewModel: CheckInViewModel = viewModel()
-                val passportScanViewModel: PassportScanViewModel = viewModel()
-
-                when (currentScreen) {
-                    AppScreen.CHECKIN -> {
-                        CheckInScreen(
-                            viewModel = checkInViewModel,
-                            onScanPassport = { currentScreen = AppScreen.SCAN },
-                            onVerification = { currentScreen = AppScreen.CONFIRM_DETAILS },
-                            onFlightOptions = { currentScreen = AppScreen.SERVICES },
-                            onFinish = { finish() }
-                        )
-                    }
-                    AppScreen.SCAN -> {
-                        PassportScanScreen(
-                            onBack = { currentScreen = AppScreen.CHECKIN },
-                            onMrzExtracted = { mrzData ->
-                                checkInViewModel.initFromMrz(mrzData)
-                                currentScreen = AppScreen.CONFIRM_DETAILS
-                            },
-                            viewModel = passportScanViewModel
-                        )
-                    }
-                    AppScreen.CONFIRM_DETAILS -> {
-                        VerificationScreen(
-                            viewModel = checkInViewModel,
-                            onBack = { currentScreen = AppScreen.CHECKIN },
-                            onConfirm = { currentScreen = AppScreen.SERVICES }
-                        )
-                    }
-                    AppScreen.SERVICES -> {
-                        ServicesScreen(
-                            viewModel = checkInViewModel,
-                            onBack = { currentScreen = AppScreen.CHECKIN },
-                            onConfirm = { currentScreen = AppScreen.FINAL_CONFIRMATION },
-                            onSkip = { currentScreen = AppScreen.FINAL_CONFIRMATION }
-                        )
-                    }
-                    AppScreen.FINAL_CONFIRMATION -> {
-                        ConfirmationScreen(
-                            viewModel = checkInViewModel,
-                            onBack = { currentScreen = AppScreen.SERVICES },
-                            onConfirm = { finish() },
-                            onNext = { }
-                        )
-                    }
-                }
+                val navController = rememberNavController()
+                AppNavGraph(navController = navController)
             }
         }
     }
