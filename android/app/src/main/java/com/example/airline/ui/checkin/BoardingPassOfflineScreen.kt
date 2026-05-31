@@ -3,8 +3,15 @@ package com.example.airline.ui.checkin
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import com.example.airline.data.model.BoardingPassModel
 import com.example.airline.data.repository.OfflineBoardingPassCache
+import com.example.airline.local.AppDatabase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,23 +63,38 @@ data class SavedBoardingPass(
 
 @Composable
 fun BoardingPassOfflineScreen(onBack: () -> Unit = {}) {
-    val cachedPasses = remember { OfflineBoardingPassCache.getAll() }
-    val savedPasses = if (cachedPasses.isNotEmpty()) {
-        cachedPasses.map { bp ->
-            SavedBoardingPass(
-                date       = bp.departureTime.ifEmpty { "—" },
-                time       = bp.boardingTime.ifEmpty  { "—" },
-                originCode = bp.origin.ifEmpty        { "—" },
-                originCity = bp.originCity.ifEmpty    { "—" },
-                destCode   = bp.destination.ifEmpty   { "—" },
-                destCity   = bp.destinationCity.ifEmpty { "—" }
-            )
+    val context = LocalContext.current
+    var savedPasses by remember { mutableStateOf<List<SavedBoardingPass>>(emptyList()) }
+
+    // Load from Room DB on launch
+    LaunchedEffect(Unit) {
+        val roomPasses = withContext(Dispatchers.IO) {
+            AppDatabase.getInstance(context).boardingPassDao().getAll()
         }
-    } else {
-        listOf(
-            SavedBoardingPass("Feb 18, 2022", "08:15 AM", "LON", "London", "RIO", "Rio de Janeiro"),
-            SavedBoardingPass("Feb 18, 2022", "08:15 AM", "LON", "London", "RIO", "Rio de Janeiro")
-        )
+        savedPasses = if (roomPasses.isNotEmpty()) {
+            roomPasses.map { entity ->
+                SavedBoardingPass(
+                    date       = entity.departureTime.ifEmpty { "—" },
+                    time       = entity.departureTime.ifEmpty { "—" },
+                    originCode = entity.origin.ifEmpty        { "—" },
+                    originCity = entity.origin.ifEmpty        { "—" },
+                    destCode   = entity.destination.ifEmpty   { "—" },
+                    destCity   = entity.destination.ifEmpty   { "—" }
+                )
+            }
+        } else {
+            // Fallback to in-memory cache
+            OfflineBoardingPassCache.getAll().map { bp ->
+                SavedBoardingPass(
+                    date       = bp.departureTime.ifEmpty { "—" },
+                    time       = bp.boardingTime.ifEmpty  { "—" },
+                    originCode = bp.origin.ifEmpty        { "—" },
+                    originCity = bp.originCity.ifEmpty    { "—" },
+                    destCode   = bp.destination.ifEmpty   { "—" },
+                    destCity   = bp.destinationCity.ifEmpty { "—" }
+                )
+            }
+        }
     }
 
     Column(

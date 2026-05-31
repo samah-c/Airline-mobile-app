@@ -42,8 +42,9 @@ class SeatSelectionViewModel(
 
     fun toggleSeat(seatId: String) {
         val current = _uiState.value.selectedSeats
+        // Airline check-in = 1 seat per passenger — selecting a new seat replaces the old one
         _uiState.value = _uiState.value.copy(
-            selectedSeats = if (seatId in current) current - seatId else current + seatId
+            selectedSeats = if (seatId in current) emptySet() else setOf(seatId)
         )
     }
 

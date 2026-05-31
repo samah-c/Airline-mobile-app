@@ -68,7 +68,9 @@ fun BoardingPassScreen(
     checkInId: Int = 1,
     onBack: () -> Unit = {},
     onDownload: () -> Unit = {},
-    viewModel: BoardingPassViewModel = viewModel(factory = BoardingPassViewModel.Factory())
+    viewModel: BoardingPassViewModel = viewModel(
+        factory = BoardingPassViewModel.Factory(LocalContext.current.applicationContext as android.app.Application)
+    )
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val bp      = uiState.boardingPass

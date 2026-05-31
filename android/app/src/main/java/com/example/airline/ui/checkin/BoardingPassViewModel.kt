@@ -1,11 +1,14 @@
 package com.example.airline.ui.checkin
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.airline.data.model.BoardingPassModel
 import com.example.airline.data.repository.BoardingPassRepository
 import com.example.airline.data.repository.OfflineBoardingPassCache
+import com.example.airline.local.AppDatabase
+import com.example.airline.local.BoardingPassEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -20,8 +23,11 @@ data class BoardingPassUiState(
 )
 
 class BoardingPassViewModel(
+    application: Application,
     private val repository: BoardingPassRepository = BoardingPassRepository()
-) : ViewModel() {
+) : AndroidViewModel(application) {
+
+    private val dao = AppDatabase.getInstance(application).boardingPassDao()
 
     private val _uiState = MutableStateFlow(BoardingPassUiState())
     val uiState: StateFlow<BoardingPassUiState> = _uiState
@@ -34,10 +40,10 @@ class BoardingPassViewModel(
                 if (bp != null) {
                     _uiState.value = _uiState.value.copy(boardingPass = bp, isLoading = false)
                 } else {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = "Boarding pass not found")
+                    loadFromRoom()
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                loadFromRoom()
             }
         }
     }
@@ -50,11 +56,15 @@ class BoardingPassViewModel(
                 if (bp != null) {
                     _uiState.value = _uiState.value.copy(boardingPass = bp, isGenerating = false)
                     OfflineBoardingPassCache.save(bp)
+                    // Save to Room for persistent offline access
+                    dao.insert(bp.toEntity())
                 } else {
                     _uiState.value = _uiState.value.copy(isGenerating = false, error = "Failed to generate boarding pass")
+                    loadFromRoom()
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isGenerating = false, error = e.message)
+                loadFromRoom()
             }
         }
     }
@@ -71,13 +81,56 @@ class BoardingPassViewModel(
         }
     }
 
-    class Factory(private val repository: BoardingPassRepository = BoardingPassRepository()) : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+    private suspend fun loadFromRoom() {
+        val saved = dao.getAll().firstOrNull()
+        if (saved != null) {
+            _uiState.value = _uiState.value.copy(
+                boardingPass = saved.toModel(),
+                isLoading    = false,
+                isGenerating = false,
+                error        = null
+            )
+        } else {
+            _uiState.value = _uiState.value.copy(isLoading = false, isGenerating = false)
+        }
+    }
+
+    class Factory(private val application: Application) : ViewModelProvider.Factory {
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(BoardingPassViewModel::class.java)) {
                 @Suppress("UNCHECKED_CAST")
-                return BoardingPassViewModel(repository) as T
+                return BoardingPassViewModel(application) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
 }
+
+private fun BoardingPassModel.toEntity() = BoardingPassEntity(
+    flightNumber  = flightNumber,
+    gate          = gate,
+    origin        = origin,
+    destination   = destination,
+    passengerName = passengerName,
+    seat          = seat,
+    seatClass     = seatClass,
+    departureTime = departureTime,
+    barcode       = barcode,
+    qrCode        = qrCode
+)
+
+private fun BoardingPassEntity.toModel() = BoardingPassModel(
+    flightNumber    = flightNumber,
+    gate            = gate,
+    origin          = origin,
+    originCity      = origin,
+    destination     = destination,
+    destinationCity = destination,
+    passengerName   = passengerName,
+    seat            = seat,
+    seatClass       = seatClass,
+    boardingTime    = departureTime,
+    departureTime   = departureTime,
+    barcode         = barcode,
+    qrCode          = qrCode
+)
