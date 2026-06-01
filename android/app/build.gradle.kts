@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.0"
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
 }
@@ -37,6 +38,7 @@ android {
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -60,17 +62,17 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.activity.compose)
 
-    // ── Compose BOM (Bill of Materials) pour versions cohérentes ─
+    // ── Compose BOM ───────────────────────────────────────────
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
-    // ── Icônes Material (nécessaires pour ton UI) ─────────────
+    // ── Icônes Material ───────────────────────────────────────
     implementation("androidx.compose.material:material-icons-extended")
 
-    // ── Foundation (si nécessaire pour des composants avancés) ─
+    // ── Foundation ────────────────────────────────────────────
     implementation(libs.androidx.compose.foundation)
 
     // ── CameraX ───────────────────────────────────────────────
@@ -86,15 +88,17 @@ dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
-    // Firebase BOM — gère les versions automatiquement
+    // ── Firebase ──────────────────────────────────────────────
     implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
     implementation("com.google.firebase:firebase-messaging-ktx")
 
-    // ── Networking (Retrofit + Gson) ──────────────────────────
+    // ── Networking (Retrofit + Gson + kotlinx.serialization) ──
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
 
     // ── QR Code (ZXing) ───────────────────────────────────────
     implementation("com.google.zxing:core:3.5.3")
@@ -104,18 +108,25 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Google Sign-In
+    // ── Google Sign-In ────────────────────────────────────────
     implementation("com.google.android.gms:play-services-auth:21.2.0")
 
-    // Credential Manager (API moderne recommandée pour Android 14+)
+    // ── Credential Manager ────────────────────────────────────
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
+    // ── Hilt ─────────────────────────────────────────────────
     implementation("com.google.dagger:hilt-android:2.52")
-    ksp("com.google.dagger:hilt-android-compiler:2.52")   // ← kapt → ksp
+    ksp("com.google.dagger:hilt-android-compiler:2.52")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    // ── ThreeTenABP (dates) ───────────────────────────────────
     implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+
     // ── Tests ─────────────────────────────────────────────────
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

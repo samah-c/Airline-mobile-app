@@ -3,6 +3,13 @@ package com.example.airline.data.repository
 import com.example.airline.data.model.BoardingPassModel
 import com.example.airline.network.GenerateBoardingPassRequest
 import com.example.airline.network.RetrofitClient
+import okhttp3.ResponseBody
+import retrofit2.Response
+
+data class PdfDownloadResult(
+    val bytes: ByteArray,
+    val filename: String
+)
 
 class BoardingPassRepository {
 
@@ -33,8 +40,26 @@ class BoardingPassRepository {
         return if (response.isSuccessful) response.body()?.let { mapResponse(it) } else null
     }
 
-    suspend fun downloadPdf(checkInId: Int): ByteArray? {
-        val response = RetrofitClient.api.downloadBoardingPassPdf(checkInId)
-        return if (response.isSuccessful) response.body()?.bytes() else null
+    suspend fun downloadPdf(checkInId: Int): PdfDownloadResult? {
+        val response: Response<ResponseBody> = RetrofitClient.api.downloadBoardingPassPdf(checkInId)
+
+        if (response.isSuccessful && response.body() != null) {
+            val bytes = response.body()!!.bytes()
+
+            // Extraction du nom depuis Content-Disposition: attachment; filename="boarding-pass-XYZ.pdf"
+            val contentDisposition = response.headers()["Content-Disposition"]
+            val filename = extractFileName(contentDisposition) ?: "boarding-pass-$checkInId.pdf"
+
+            return PdfDownloadResult(bytes, filename)
+        }
+        return null
+    }
+
+    // Helper pour parser le header Content-Disposition
+    private fun extractFileName(contentDisposition: String?): String? {
+        if (contentDisposition == null) return null
+        // Regex pour capturer le nom entre guillemets ou après filename=
+        val regex = """filename\*?=['"]?(?:UTF-8''|[^'"]*\*)?([^'";\n]+)["']?""".toRegex()
+        return regex.find(contentDisposition)?.groupValues?.get(1)
     }
 }

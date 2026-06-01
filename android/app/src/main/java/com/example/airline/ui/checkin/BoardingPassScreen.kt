@@ -1,6 +1,7 @@
 package com.example.airline.ui.checkin
 
 import android.content.ContentValues
+import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.Environment
@@ -81,9 +82,16 @@ fun BoardingPassScreen(
     // Save PDF when bytes arrive
     LaunchedEffect(uiState.pdfBytes) {
         uiState.pdfBytes?.let { bytes ->
-            savePdfToDownloads(context, bytes, "boarding-pass-$checkInId.pdf")
-            Toast.makeText(context, "PDF saved to Downloads", Toast.LENGTH_SHORT).show()
-            onDownload()
+            val filename = uiState.pdfFilename ?: "boarding-pass-$checkInId.pdf"
+            val success = savePdfToDownloads(context, bytes, filename)
+
+            if (success) {
+                Toast.makeText(context, "✅ Saved: $filename", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, "❌ Save failed", Toast.LENGTH_LONG).show()
+            }
+
+            viewModel.clearPdfBytes()
         }
     }
 
@@ -387,26 +395,42 @@ private fun QRCodeImage(content: String, modifier: Modifier = Modifier) {
     }
 }
 
-private fun savePdfToDownloads(context: android.content.Context, bytes: ByteArray, filename: String) {
-    try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, filename)
-                put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
-                put(MediaStore.Downloads.IS_PENDING, 1)
+private fun savePdfToDownloads(context: Context, bytes: ByteArray, filename: String): Boolean {
+    return try {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            // Android 10+ : utilise MediaStore
+            val contentValues = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Downloads.DISPLAY_NAME, filename)
+                put(android.provider.MediaStore.Downloads.MIME_TYPE, "application/pdf")
+                put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
             }
-            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+
+            val resolver = context.contentResolver
+            val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+
             uri?.let {
-                context.contentResolver.openOutputStream(it)?.use { stream -> stream.write(bytes) }
-                values.clear()
-                values.put(MediaStore.Downloads.IS_PENDING, 0)
-                context.contentResolver.update(it, values, null, null)
-            }
+                resolver.openOutputStream(it)?.use { outputStream ->
+                    outputStream.write(bytes)
+                }
+                // Marque comme terminé
+                contentValues.clear()
+                contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+                resolver.update(it, contentValues, null, null)
+                true
+            } ?: false
         } else {
-            val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename)
+            // Android <10 : écriture directe (nécessite permission WRITE_EXTERNAL_STORAGE)
+            val file = java.io.File(
+                android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),
+                filename
+            )
             file.writeBytes(bytes)
+            true
         }
-    } catch (e: Exception) { e.printStackTrace() }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
 }
 
 @Preview(showBackground = true, heightDp = 820)

@@ -10,10 +10,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.airline.ui.baggage.BaggageScreen
 import com.example.airline.ui.checkin.BoardingPassOfflineScreen
 import com.example.airline.ui.checkin.BoardingPassScreen
@@ -22,6 +24,7 @@ import com.example.airline.ui.checkin.CheckInViewModel
 import com.example.airline.ui.checkin.SeatSelectionScreen
 import com.example.airline.ui.confirmation.ConfirmationScreen
 import com.example.airline.ui.flighthistory.FlightHistoryScreen
+import com.example.airline.ui.flightlookup.FlightLookUpResultScreen
 import com.example.airline.ui.forgotpassword.ForgotPasswordScreen
 import com.example.airline.ui.homepage.HomeScreen
 import com.example.airline.ui.login.LoginScreen
@@ -34,46 +37,52 @@ import com.example.airline.ui.settings.SettingsScreen
 import com.example.airline.ui.signup.SignUpScreen
 import com.example.airline.ui.splash.SplashScreen
 import com.example.airline.ui.verification.VerificationScreen
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
-import com.example.airline.ui.flightlookup.FlightLookUpResultScreen
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Routes
+// ─────────────────────────────────────────────────────────────────────────────
 object Routes {
     const val SPLASH                = "splash"
     const val ONBOARDING            = "onboarding"
     const val LOGIN                 = "login"
     const val SIGNUP                = "signup"
     const val FORGOT_PASSWORD       = "forgot_password"
+    const val BOARDING_PASS_OFFLINE = "boarding_pass_offline"
+
     const val HOME                  = "home"
     const val PROFILE               = "profile"
     const val FLIGHT_HISTORY        = "flight_history"
     const val SETTINGS              = "settings"
-    const val BAGGAGE               = "baggage"
+    const val BOARDING_PASS         = "boarding_pass"
+
+    // Check-in flow (correct order)
     const val CHECKIN               = "checkin"
     const val SCAN                  = "scan"
     const val CONFIRM_DETAILS       = "confirm_details"
+    const val SEAT_SELECTION        = "seat_selection"
+    const val BAGGAGE               = "baggage"
     const val SERVICES              = "services"
     const val FINAL_CONFIRMATION    = "final_confirmation"
-    const val SEAT_SELECTION        = "seat_selection"
-    const val BOARDING_PASS         = "boarding_pass"
-    const val BOARDING_PASS_OFFLINE = "boarding_pass_offline"
-    const val FLIGHT_LOOKUP_RESULT = "flight_lookup_result/{pnr}/{lastName}"
+
+    // Flight lookup with args
+    const val FLIGHT_LOOKUP_RESULT  = "flight_lookup_result/{pnr}/{lastName}"
+    fun flightLookupResult(pnr: String, lastName: String) =
+        "flight_lookup_result/$pnr/$lastName"
 }
 
-
+// ─────────────────────────────────────────────────────────────────────────────
+// AppNavGraph
+// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController()
-
 ) {
-    val checkInViewModel: CheckInViewModel = viewModel()
-    val passportScanViewModel: PassportScanViewModel = viewModel()
-
     val currentEntry by navController.currentBackStackEntryAsState()
-    val showBottomBar = currentEntry?.destination?.route in bottomNavRoutes
+    val currentRoute = currentEntry?.destination?.route
 
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
+            if (currentRoute in bottomNavRoutes) {
                 BottomNavBar(navController = navController)
             }
         }
@@ -84,7 +93,7 @@ fun AppNavGraph(
             modifier         = Modifier.padding(innerPadding)
         ) {
 
-            // ── Splash & Onboarding ───────────────────────────
+            // ── Splash ────────────────────────────────────────
             composable(Routes.SPLASH) {
                 SplashScreen(
                     onNavigateToOnboarding = {
@@ -95,6 +104,7 @@ fun AppNavGraph(
                 )
             }
 
+            // ── Onboarding ────────────────────────────────────
             composable(Routes.ONBOARDING) {
                 OnboardingScreen(
                     onGetStarted = {
@@ -108,15 +118,16 @@ fun AppNavGraph(
             // ── Auth ──────────────────────────────────────────
             composable(Routes.LOGIN) {
                 LoginScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onLoginSuccess = {
+                    onNavigateBack             = { navController.popBackStack() },
+                    onLoginSuccess             = {
                         navController.navigate(Routes.HOME) {
                             popUpTo(Routes.LOGIN) { inclusive = true }
                         }
                     },
-                    onNavigateToSignUp        = { navController.navigate(Routes.SIGNUP) },
+                    onNavigateToSignUp         = { navController.navigate(Routes.SIGNUP) },
                     onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
-                    onNavigateToBaggage       = { navController.navigate(Routes.BAGGAGE) }
+                    // FIX: was navigating to BAGGAGE — now correctly goes to offline boarding pass
+                    onNavigateToBaggage        = { navController.navigate(Routes.BOARDING_PASS_OFFLINE) }
                 )
             }
 
@@ -147,23 +158,30 @@ fun AppNavGraph(
                 )
             }
 
-            // ── Main (with bottom nav) ────────────────────────
+            // Offline boarding pass — accessible without login
+            composable(Routes.BOARDING_PASS_OFFLINE) {
+                BoardingPassOfflineScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            // ── Main screens (with bottom nav) ─────────────────
             composable(Routes.HOME) {
                 HomeScreen(
-                    onSearchFlight = { pnr, lastName ->
-                        navController.navigate("flight_lookup_result/$pnr/$lastName")
+                    onSearchFlight    = { pnr, lastName ->
+                        navController.navigate(Routes.flightLookupResult(pnr, lastName))
                     },
-                    onNavigateBaggage  = { navController.navigate(Routes.BAGGAGE) },
-                    onNavigateCheckin  = { navController.navigate(Routes.CHECKIN) },
-                    onNavigateProfile  = { navController.navigate(Routes.PROFILE) }
+                    onNavigateBaggage = { navController.navigate(Routes.CHECKIN) },
+                    onNavigateCheckin = { navController.navigate(Routes.CHECKIN) },
+                    onNavigateProfile = { navController.navigate(Routes.PROFILE) }
                 )
             }
 
             composable(Routes.PROFILE) {
                 ProfileScreen(
-                    onNavigateBack          = { navController.popBackStack() },
+                    onNavigateBack            = { navController.popBackStack() },
                     onNavigateToFlightHistory = { navController.navigate(Routes.FLIGHT_HISTORY) },
-                    onNavigateToSettings    = { navController.navigate(Routes.SETTINGS) }
+                    onNavigateToSettings      = { navController.navigate(Routes.SETTINGS) }
                 )
             }
 
@@ -175,88 +193,19 @@ fun AppNavGraph(
                 }
                 FlightHistoryScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    userId = userId
+                    userId         = userId
                 )
             }
 
-
             composable(Routes.SETTINGS) {
                 SettingsScreen(
-                    onNavigateBack    = { navController.popBackStack() },
+                    onNavigateBack      = { navController.popBackStack() },
                     onNavigateToProfile = { navController.navigate(Routes.PROFILE) },
-                    onLogout          = {
+                    onLogout            = {
                         navController.navigate(Routes.LOGIN) {
                             popUpTo(0) { inclusive = true }
                         }
                     }
-                )
-            }
-
-            // ── Baggage ───────────────────────────────────────
-            composable(Routes.BAGGAGE) {
-                BaggageScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onConfirm      = { navController.navigate(Routes.HOME) }
-                )
-            }
-
-            // ── Check-In flow ─────────────────────────────────
-            composable(Routes.CHECKIN) {
-                CheckInScreen(
-                    viewModel       = checkInViewModel,
-                    onScanPassport  = { navController.navigate(Routes.SCAN) },
-                    onVerification  = { navController.navigate(Routes.CONFIRM_DETAILS) },
-                    onFlightOptions = { navController.navigate(Routes.SERVICES) },
-                    onFinish        = { navController.popBackStack() }
-                )
-            }
-
-            composable(Routes.SCAN) {
-                PassportScanScreen(
-                    viewModel       = passportScanViewModel,
-                    onBack          = { navController.popBackStack() },
-                    onMrzExtracted  = { mrzData ->
-                        checkInViewModel.initFromMrz(mrzData)
-                        navController.navigate(Routes.CONFIRM_DETAILS)
-                    }
-                )
-            }
-
-            composable(Routes.CONFIRM_DETAILS) {
-                VerificationScreen(
-                    viewModel  = checkInViewModel,
-                    onBack     = { navController.popBackStack() },
-                    onConfirm  = { navController.navigate(Routes.SERVICES) }
-                )
-            }
-
-            composable(Routes.SERVICES) {
-                ServicesScreen(
-                    viewModel  = checkInViewModel,
-                    onBack     = { navController.popBackStack() },
-                    onConfirm  = { navController.navigate(Routes.FINAL_CONFIRMATION) },
-                    onSkip     = { navController.navigate(Routes.FINAL_CONFIRMATION) }
-                )
-            }
-
-            composable(Routes.FINAL_CONFIRMATION) {
-                ConfirmationScreen(
-                    viewModel  = checkInViewModel,
-                    onBack     = { navController.popBackStack() },
-                    onConfirm  = {
-                        navController.navigate(Routes.SEAT_SELECTION) {
-                            popUpTo(Routes.CHECKIN) { inclusive = true }
-                        }
-                    },
-                    onNext = { navController.navigate(Routes.SEAT_SELECTION) }
-                )
-            }
-
-            // ── Feriel's screens ──────────────────────────────
-            composable(Routes.SEAT_SELECTION) {
-                SeatSelectionScreen(
-                    onBack = { navController.popBackStack() },
-                    onNext = { navController.navigate(Routes.BOARDING_PASS) }
                 )
             }
 
@@ -267,27 +216,126 @@ fun AppNavGraph(
                 )
             }
 
-            composable(Routes.BOARDING_PASS_OFFLINE) {
-                BoardingPassOfflineScreen(
-                    onBack = { navController.popBackStack() }
-                )
-            }
-
-            // Add this inside NavHost, after the HOME composable:
+            // ── Flight Lookup Result ───────────────────────────
             composable(
-                route = Routes.FLIGHT_LOOKUP_RESULT,        // "flight_lookup_result/{pnr}/{lastName}"
+                route = Routes.FLIGHT_LOOKUP_RESULT,
                 arguments = listOf(
                     navArgument("pnr")      { type = NavType.StringType },
                     navArgument("lastName") { type = NavType.StringType }
                 )
             ) { backStackEntry ->
                 FlightLookUpResultScreen(
-                    pnr        = backStackEntry.arguments?.getString("pnr") ?: "",
-                    lastName   = backStackEntry.arguments?.getString("lastName") ?: "",
-                    onCheckIn  = { navController.navigate(Routes.CHECKIN) },
-                    onNavigateHome     = { navController.navigate(Routes.HOME) },
-                    onNavigateBaggage  = { navController.navigate(Routes.BAGGAGE) },
-                    onNavigateProfile  = { navController.navigate(Routes.PROFILE) }
+                    pnr               = backStackEntry.arguments?.getString("pnr") ?: "",
+                    lastName          = backStackEntry.arguments?.getString("lastName") ?: "",
+                    onCheckIn         = { navController.navigate(Routes.CHECKIN) },
+                    onNavigateHome    = { navController.navigate(Routes.HOME) },
+                    onNavigateBaggage = { navController.navigate(Routes.CHECKIN) },
+                    onNavigateProfile = { navController.navigate(Routes.PROFILE) }
+                )
+            }
+
+            // ── Check-In flow (correct order) ─────────────────
+            //
+            // CheckIn (hub) → Scan → Verification → SeatSelection
+            //                                              ↓
+            //                                           Baggage
+            //                                              ↓
+            //                                          Services
+            //                                              ↓
+            //                                     FinalConfirmation
+            //                                              ↓
+            //                                        BoardingPass
+            //
+            composable(Routes.CHECKIN) {
+                // Scoped to this back stack entry so state resets on each check-in
+                val checkInViewModel: CheckInViewModel = viewModel(
+                    viewModelStoreOwner = it
+                )
+                CheckInScreen(
+                    viewModel       = checkInViewModel,
+                    onScanPassport  = { navController.navigate(Routes.SCAN) },
+                    onVerification  = { navController.navigate(Routes.CONFIRM_DETAILS) },
+                    onFlightOptions = { navController.navigate(Routes.SERVICES) },
+                    onFinish        = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.SCAN) {
+                val checkInEntry = remember(currentEntry) {
+                    navController.getBackStackEntry(Routes.CHECKIN)
+                }
+                val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
+                val passportScanViewModel: PassportScanViewModel = viewModel()
+
+                PassportScanScreen(
+                    viewModel      = passportScanViewModel,
+                    onBack         = { navController.popBackStack() },
+                    onMrzExtracted = { mrzData ->
+                        checkInViewModel.initFromMrz(mrzData)
+                        navController.navigate(Routes.CONFIRM_DETAILS)
+                    }
+                )
+            }
+
+            composable(Routes.CONFIRM_DETAILS) {
+                val checkInEntry = remember(currentEntry) {
+                    navController.getBackStackEntry(Routes.CHECKIN)
+                }
+                val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
+                VerificationScreen(
+                    viewModel = checkInViewModel,
+                    onBack    = { navController.popBackStack() },
+                    onConfirm = { navController.navigate(Routes.SEAT_SELECTION) }
+                )
+            }
+
+            // FIX: SeatSelection now comes before Baggage
+            composable(Routes.SEAT_SELECTION) {
+                SeatSelectionScreen(
+                    onBack = { navController.popBackStack() },
+                    onNext = { navController.navigate(Routes.BAGGAGE) }
+                )
+            }
+
+            // FIX: Baggage now between SeatSelection and Services
+            composable(Routes.BAGGAGE) {
+                val checkInEntry = remember(currentEntry) {
+                    navController.getBackStackEntry(Routes.CHECKIN)
+                }
+                val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
+                BaggageScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onConfirm      = { navController.navigate(Routes.SERVICES) }
+                )
+            }
+
+            composable(Routes.SERVICES) {
+                val checkInEntry = remember(currentEntry) {
+                    navController.getBackStackEntry(Routes.CHECKIN)
+                }
+                val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
+                ServicesScreen(
+                    viewModel = checkInViewModel,
+                    onBack    = { navController.popBackStack() },
+                    onConfirm = { navController.navigate(Routes.FINAL_CONFIRMATION) },
+                    onSkip    = { navController.navigate(Routes.FINAL_CONFIRMATION) }
+                )
+            }
+
+            composable(Routes.FINAL_CONFIRMATION) {
+                val checkInEntry = remember(currentEntry) {
+                    navController.getBackStackEntry(Routes.CHECKIN)
+                }
+                val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
+                ConfirmationScreen(
+                    viewModel = checkInViewModel,
+                    onBack    = { navController.popBackStack() },
+                    onConfirm = {
+                        navController.navigate(Routes.BOARDING_PASS) {
+                            popUpTo(Routes.CHECKIN) { inclusive = true }
+                        }
+                    },
+                    onNext = { navController.navigate(Routes.BOARDING_PASS) }
                 )
             }
         }

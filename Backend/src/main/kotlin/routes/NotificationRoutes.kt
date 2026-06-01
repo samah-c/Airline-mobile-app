@@ -17,5 +17,17 @@ fun Route.notificationRoutes(notificationService: NotificationService) {
             notificationService.saveFcmToken(request.userId, request.token)
             call.respond(HttpStatusCode.OK, "Token saved")
         }
+
+    }
+    // ⚠️ À supprimer avant la production
+    post("/api/notifications/test") {
+        val body = call.receive<Map<String, String>>()
+        val userId = body["userId"]?.toInt() ?: return@post call.respond(HttpStatusCode.BadRequest)
+        notificationService.sendCheckInConfirmation(
+            userId = userId,
+            flightNumber = "AF123",
+            seat = "12A"
+        )
+        call.respond(HttpStatusCode.OK, "Notification envoyée")
     }
 }
