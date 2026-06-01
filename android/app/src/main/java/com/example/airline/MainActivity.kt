@@ -8,9 +8,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.navigation.compose.rememberNavController
+import com.example.airline.data.network.SessionManager
 import com.example.airline.navigation.AppNavGraph
 import com.example.airline.ui.theme.AirlineTheme
-import com.google.firebase.messaging.FirebaseMessaging
 
 class MainActivity : ComponentActivity() {
 
@@ -21,14 +21,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Test Firebase
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                android.util.Log.d("FCM_TEST", "Token OK: ${task.result}")
-            } else {
-                android.util.Log.e("FCM_TEST", "Token FAILED: ${task.exception?.message}")
-            }
-        }
+        // Initialiser SessionManager
+        SessionManager.init(this)
+
         enableEdgeToEdge()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

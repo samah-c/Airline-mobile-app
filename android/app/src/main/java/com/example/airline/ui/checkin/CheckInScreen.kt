@@ -88,9 +88,7 @@ fun CheckInScreen(
                 )
             )
         },
-        bottomBar = {
-            BottomNavigationBar()
-        },
+
         containerColor = Color.White
     ) { paddingValues ->
         Column(
@@ -227,35 +225,4 @@ private fun TimelineConnector(active: Boolean) {
             )
         }
     }
-}
-
-@Composable
-private fun BottomNavigationBar() {
-    Surface(
-        color = Color(0xFF1942D8),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 24.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BottomNavItem(icon = Icons.Default.Home, isSelected = false)
-            BottomNavItem(icon = Icons.Default.ConfirmationNumber, isSelected = true)
-            BottomNavItem(icon = Icons.Default.Flight, isSelected = false)
-            BottomNavItem(icon = Icons.Default.Person, isSelected = false)
-        }
-    }
-}
-
-@Composable
-private fun BottomNavItem(icon: ImageVector, isSelected: Boolean) {
-    Icon(
-        imageVector = icon,
-        contentDescription = null,
-        tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.6f),
-        modifier = Modifier.size(30.dp)
-    )
 }
