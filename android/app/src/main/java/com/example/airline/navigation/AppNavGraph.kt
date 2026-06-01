@@ -23,6 +23,7 @@ import com.example.airline.ui.checkin.SeatSelectionScreen
 import com.example.airline.ui.confirmation.ConfirmationScreen
 import com.example.airline.ui.flighthistory.FlightHistoryScreen
 import com.example.airline.ui.forgotpassword.ForgotPasswordScreen
+import com.example.airline.ui.homepage.HomeScreen
 import com.example.airline.ui.login.LoginScreen
 import com.example.airline.ui.onboarding.OnboardingScreen
 import com.example.airline.ui.profile.ProfileScreen
@@ -33,7 +34,9 @@ import com.example.airline.ui.settings.SettingsScreen
 import com.example.airline.ui.signup.SignUpScreen
 import com.example.airline.ui.splash.SplashScreen
 import com.example.airline.ui.verification.VerificationScreen
-
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.example.airline.ui.flightlookup.FlightLookUpResultScreen
 object Routes {
     const val SPLASH                = "splash"
     const val ONBOARDING            = "onboarding"
@@ -53,6 +56,7 @@ object Routes {
     const val SEAT_SELECTION        = "seat_selection"
     const val BOARDING_PASS         = "boarding_pass"
     const val BOARDING_PASS_OFFLINE = "boarding_pass_offline"
+    const val FLIGHT_LOOKUP_RESULT = "flight_lookup_result/{pnr}/{lastName}"
 }
 
 
@@ -145,10 +149,13 @@ fun AppNavGraph(
 
             // ── Main (with bottom nav) ────────────────────────
             composable(Routes.HOME) {
-                ProfileScreen(
-                    onNavigateBack          = { navController.popBackStack() },
-                    onNavigateToFlightHistory = { navController.navigate(Routes.FLIGHT_HISTORY) },
-                    onNavigateToSettings    = { navController.navigate(Routes.SETTINGS) }
+                HomeScreen(
+                    onSearchFlight = { pnr, lastName ->
+                        navController.navigate("flight_lookup_result/$pnr/$lastName")
+                    },
+                    onNavigateBaggage  = { navController.navigate(Routes.BAGGAGE) },
+                    onNavigateCheckin  = { navController.navigate(Routes.CHECKIN) },
+                    onNavigateProfile  = { navController.navigate(Routes.PROFILE) }
                 )
             }
 
@@ -263,6 +270,24 @@ fun AppNavGraph(
             composable(Routes.BOARDING_PASS_OFFLINE) {
                 BoardingPassOfflineScreen(
                     onBack = { navController.popBackStack() }
+                )
+            }
+
+            // Add this inside NavHost, after the HOME composable:
+            composable(
+                route = Routes.FLIGHT_LOOKUP_RESULT,        // "flight_lookup_result/{pnr}/{lastName}"
+                arguments = listOf(
+                    navArgument("pnr")      { type = NavType.StringType },
+                    navArgument("lastName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                FlightLookUpResultScreen(
+                    pnr        = backStackEntry.arguments?.getString("pnr") ?: "",
+                    lastName   = backStackEntry.arguments?.getString("lastName") ?: "",
+                    onCheckIn  = { navController.navigate(Routes.CHECKIN) },
+                    onNavigateHome     = { navController.navigate(Routes.HOME) },
+                    onNavigateBaggage  = { navController.navigate(Routes.BAGGAGE) },
+                    onNavigateProfile  = { navController.navigate(Routes.PROFILE) }
                 )
             }
         }
