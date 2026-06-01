@@ -4,8 +4,11 @@ import com.example.airline.data.retrofit.AuthApiService
 import com.example.airline.data.retrofit.UpdateProfileRequest
 import com.example.airline.data.retrofit.UserResponse
 import com.example.airline.network.RetrofitClient
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class UserRepository {
+@Singleton
+class UserRepository @Inject constructor() {
     private val api = RetrofitClient.retrofit.create(AuthApiService::class.java)
 
     suspend fun getProfile(): Result<UserResponse> {
