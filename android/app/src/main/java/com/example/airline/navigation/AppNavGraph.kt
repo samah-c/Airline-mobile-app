@@ -52,10 +52,6 @@ object Routes {
     const val BOARDING_PASS_OFFLINE = "boarding_pass_offline"
 }
 
-// Routes that show the bottom nav bar
-private val bottomNavRoutes = setOf(
-    Routes.HOME, Routes.PROFILE, Routes.FLIGHT_HISTORY, Routes.SETTINGS
-)
 
 @Composable
 fun AppNavGraph(
