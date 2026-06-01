@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -176,7 +177,7 @@ fun BoardingPassOfflineScreen(onBack: () -> Unit = {}) {
             )
 
             // ── Boarding pass cards ───────────────────────────
-            savedPasses.forEach { pass ->
+            for (pass in savedPasses) {
                 SavedPassCard(pass)
                 Spacer(Modifier.height(12.dp))
             }

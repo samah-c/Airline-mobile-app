@@ -63,7 +63,7 @@ fun AppNavGraph(
 
     NavHost(
         navController = navController,
-        startDestination = Routes.SEAT_SELECTION
+        startDestination = Routes.SPLASH
     ) {
 
         // ── Splash & Onboarding ───────────────────────────────
