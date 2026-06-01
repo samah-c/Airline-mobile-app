@@ -195,10 +195,16 @@ fun SeatSelectionScreen(
                 }
             }
 
-            // Next button — fixed bottom-right
-            NextButton(
+            // Confirm button — fixed bottom-right
+            ConfirmSeatButton(
                 selectedCount = selectedSeats.size,
-                onNext        = { viewModel.confirmSelection(checkInId) { onNext() } },
+                onConfirm     = { 
+                    println("DEBUG UI: Clic sur le bouton Confirmer détecté")
+                    viewModel.confirmSelection(checkInId) { 
+                        println("DEBUG UI: Callback onNext appelé")
+                        onNext() 
+                    } 
+                },
                 modifier      = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(bottom = 20.dp, end = 16.dp)
@@ -250,7 +256,7 @@ private fun SeatHeader(onBack: () -> Unit) {
                     modifier = Modifier
                         .weight(1f).height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(if (i < 3) Color(0xFF1849D6) else Color(0xFFE5E7EB))
+                        .background(if (i < 3) Color(0xFF1942D8) else Color(0xFFE5E7EB))
                 )
             }
         }
@@ -641,15 +647,15 @@ private fun FlightInfoPanel(modifier: Modifier = Modifier) {
     }
 }
 
-// ── Next button — floating bottom-right ──────────────────────────────────────
+// ── Confirm button — floating bottom-right ──────────────────────────────────
 
 @Composable
-private fun NextButton(selectedCount: Int, onNext: () -> Unit, modifier: Modifier = Modifier) {
+private fun ConfirmSeatButton(selectedCount: Int, onConfirm: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .shadow(6.dp, RoundedCornerShape(28.dp))
             .background(Color.White, RoundedCornerShape(28.dp))
-            .clickable { onNext() }
+            .clickable { onConfirm() }
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -664,7 +670,7 @@ private fun NextButton(selectedCount: Int, onNext: () -> Unit, modifier: Modifie
                 Text(text = "$selectedCount", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Text(text = "Next",  color = PageBg, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(text = "Confirmer",  color = PageBg, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Text(text = "→",     color = PageBg, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }

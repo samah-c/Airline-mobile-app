@@ -14,7 +14,10 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,18 +25,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.airline.ui.checkin.CheckInViewModel
 import com.example.airline.ui.verification.StepBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServicesScreen(
-    viewModel: CheckInViewModel,
+    viewModel: ServicesViewModel = viewModel(),
+    checkInViewModel: CheckInViewModel,
     onBack: () -> Unit,
-    onConfirm: () -> Unit,
-    onSkip: () -> Unit
+    onConfirm: () -> Unit
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val checkInState by checkInViewModel.uiState.collectAsState()
+    val servicesState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(checkInState) {
+        viewModel.initializeFrom(checkInState)
+    }
 
     Scaffold(
         topBar = {
@@ -95,25 +104,25 @@ fun ServicesScreen(
                 Column {
                     DietaryItem(
                         title = "Standard meal", subtitle = "Regular in-flight meal", icon = "🍽️",
-                        isSelected = state.selectedMeal == "Standard meal",
+                        isSelected = servicesState.selectedMeal == "Standard meal",
                         onClick = { viewModel.updateSelectedMeal("Standard meal") },
                         showBorder = true
                     )
                     DietaryItem(
                         title = "Vegetarian", subtitle = "No meat or fish", icon = "🥗",
-                        isSelected = state.selectedMeal == "Vegetarian",
+                        isSelected = servicesState.selectedMeal == "Vegetarian",
                         onClick = { viewModel.updateSelectedMeal("Vegetarian") },
                         showBorder = true
                     )
                     DietaryItem(
                         title = "Gluten-free", subtitle = "No gluten-containing foods", icon = "🌾",
-                        isSelected = state.selectedMeal == "Gluten-free",
+                        isSelected = servicesState.selectedMeal == "Gluten-free",
                         onClick = { viewModel.updateSelectedMeal("Gluten-free") },
                         showBorder = true
                     )
                     DietaryItem(
                         title = "Halal", subtitle = "Permissible under Islamic law", icon = "☪️",
-                        isSelected = state.selectedMeal == "Halal",
+                        isSelected = servicesState.selectedMeal == "Halal",
                         onClick = { viewModel.updateSelectedMeal("Halal") },
                         showBorder = false
                     )
@@ -127,13 +136,13 @@ fun ServicesScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 AssistanceItemBox(
                     title = "Wheelchair assistance", icon = "♿",
-                    isSelected = state.wheelchairAssistance,
+                    isSelected = servicesState.wheelchairAssistance,
                     onClick = { viewModel.toggleWheelchairAssistance() },
                     modifier = Modifier.weight(1f)
                 )
                 AssistanceItemBox(
                     title = "Visual impairment", icon = "👁️",
-                    isSelected = state.visualImpairment,
+                    isSelected = servicesState.visualImpairment,
                     onClick = { viewModel.toggleVisualImpairment() },
                     modifier = Modifier.weight(1f)
                 )
@@ -142,13 +151,13 @@ fun ServicesScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 AssistanceItemBox(
                     title = "Hearing impairment", icon = "🦻",
-                    isSelected = state.hearingImpairment,
+                    isSelected = servicesState.hearingImpairment,
                     onClick = { viewModel.toggleHearingImpairment() },
                     modifier = Modifier.weight(1f)
                 )
                 AssistanceItemBox(
                     title = "Medical equipment", icon = "⚕️",
-                    isSelected = state.medicalEquipmentService,
+                    isSelected = servicesState.medicalEquipmentService,
                     onClick = { viewModel.toggleMedicalEquipmentService() },
                     modifier = Modifier.weight(1f)
                 )
@@ -184,7 +193,7 @@ fun ServicesScreen(
                             Text("Under 2 years old", color = Color.Gray, fontSize = 12.sp)
                         }
                         Switch(
-                            checked = state.infantOnLap,
+                            checked = servicesState.infantOnLap,
                             onCheckedChange = { viewModel.setInfantOnLap(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
@@ -193,7 +202,7 @@ fun ServicesScreen(
                         )
                     }
 
-                    if (state.infantOnLap) {
+                    if (servicesState.infantOnLap) {
                         Divider(color = Color(0xFF1942D8))
                         Row(
                             modifier = Modifier
@@ -204,7 +213,7 @@ fun ServicesScreen(
                         ) {
                             Text("Number of infants", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.weight(1f))
                             Stepper(
-                                value = state.numberOfInfants,
+                                value = servicesState.numberOfInfants,
                                 onMinus = { viewModel.decrementInfants() },
                                 onPlus = { viewModel.incrementInfants() }
                             )
@@ -231,7 +240,7 @@ fun ServicesScreen(
                             Text("Cabin or cargo hold", color = Color.Gray, fontSize = 12.sp)
                         }
                         Switch(
-                            checked = state.travellingWithPet,
+                            checked = servicesState.travellingWithPet,
                             onCheckedChange = { viewModel.setTravellingWithPet(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
@@ -244,8 +253,18 @@ fun ServicesScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
+            servicesState.errorMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = Color(0xFFB91C1C),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
             Button(
-                onClick = onConfirm,
+                onClick = { viewModel.submitSpecialRequests(checkInViewModel, onConfirm) },
+                enabled = !servicesState.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -254,19 +273,6 @@ fun ServicesScreen(
             ) {
                 Text("Confirmer", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Skip this step",
-                fontSize = 14.sp,
-                color = Color(0xFF6B7280),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onSkip)
-                    .padding(8.dp),
-                textAlign = TextAlign.Center
-            )
 
             Spacer(modifier = Modifier.height(32.dp))
         }

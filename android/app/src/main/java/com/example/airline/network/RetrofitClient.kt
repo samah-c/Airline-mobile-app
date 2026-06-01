@@ -11,10 +11,16 @@ object RetrofitClient {
     private const val BASE_URL = "http://192.168.128.73:8080/"
     //private const val BASE_URL = "http://10.0.2.2:8080/"
 
-
+//yasmine was here
+    // localhost via adb reverse tcp:8080 tcp:8080
+    //private const val BASE_URL = "http://localhost:8080/"
+    //private const val BASE_URL = "http://10.0.23.149:8080/"
+      //private const val BASE_URL = "http://10.80.136.174:8080/"
+    // JWT token stored after login — set via TokenManager.setToken(token)
     private var authToken: String? = null
 
     fun setToken(token: String) { authToken = token }
+    fun getToken(): String? = authToken
     fun clearToken() { authToken = null }
 
     private val authInterceptor = Interceptor { chain ->

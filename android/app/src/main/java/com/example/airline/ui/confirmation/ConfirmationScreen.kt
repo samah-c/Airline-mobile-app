@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material3.*
+import android.app.Application
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,21 +22,41 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.airline.ui.checkin.CheckInViewModel
+import com.example.airline.ui.checkin.BoardingPassViewModel
+import com.example.airline.ui.confirmation.ConfirmationViewModel
 import com.example.airline.ui.verification.StepBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfirmationScreen(
-    viewModel: CheckInViewModel,
+    viewModel: ConfirmationViewModel = viewModel(),
+    checkInViewModel: CheckInViewModel,
     onBack: () -> Unit,
     onConfirm: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    boardingPassViewModel: BoardingPassViewModel = viewModel(
+        factory = BoardingPassViewModel.Factory(
+            LocalContext.current.applicationContext as Application
+        )
+    )
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by checkInViewModel.uiState.collectAsState()
+    val confirmationState by viewModel.uiState.collectAsState()
+    val boardingPassState by boardingPassViewModel.uiState.collectAsState()
+
+    LaunchedEffect(state.checkInSessionId) {
+        state.checkInSessionId?.let {
+            boardingPassViewModel.generateBoardingPass(it)
+        }
+    }
+
+    val boardingPass = boardingPassState.boardingPass
 
     Scaffold(
         topBar = {
@@ -87,6 +108,15 @@ fun ConfirmationScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            confirmationState.errorMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = Color(0xFFB91C1C),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
             ConfirmSectionHeader(icon = Icons.Default.Flight, title = "Personal Information")
             Spacer(modifier = Modifier.height(16.dp))
             ReadOnlyTextField(label = "Last Name", value = state.lastName)
@@ -130,30 +160,31 @@ fun ConfirmationScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            ConfirmSectionHeader(icon = Icons.Default.Flight, title = "Contact Information")
-            Spacer(modifier = Modifier.height(16.dp))
-            ReadOnlyTextField(label = "Email", value = state.email.ifEmpty { "-" })
-            Spacer(modifier = Modifier.height(12.dp))
-            ReadOnlyTextField(
-                label = "Phone number",
-                value = state.phoneNumber.ifEmpty { "-" },
-                leadingIcon = {
-                    Text("🇩🇿", modifier = Modifier.padding(start = 12.dp, end = 8.dp))
-                }
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
             ConfirmSectionHeader(icon = Icons.Default.Flight, title = "Boarding pass")
             Spacer(modifier = Modifier.height(16.dp))
             BoardingPassCard(
-                passengerName = "${state.firstName} ${state.lastName}".trim().ifEmpty { "Passenger" }
+                passengerName = "${state.firstName} ${state.lastName}".trim().ifEmpty { boardingPass.passengerName.ifEmpty { "Passenger" } },
+                seatNumber = state.seatNumber ?: boardingPass.seat.ifEmpty { "N/A" },
+                flightNumber = boardingPass.flightNumber.ifEmpty { "LH007" },
+                gate = boardingPass.gate.ifEmpty { "A2" },
+                origin = boardingPass.origin.ifEmpty { "LON" },
+                destination = boardingPass.destination.ifEmpty { "RIO" },
+                boardingTime = boardingPass.boardingTime.ifEmpty { boardingPass.departureTime.ifEmpty { "08:15 AM" } },
+                departTime = boardingPass.departureTime.ifEmpty { "08:45 AM" },
+                arrivalTime = boardingPass.arrivalTime.ifEmpty { "12:00 PM" },
+                seatClass = boardingPass.seatClass.ifEmpty { "Economy" }
             )
 
             Spacer(modifier = Modifier.height(40.dp))
 
             Button(
-                onClick = onConfirm,
+                onClick = {
+                    viewModel.confirm {
+                        checkInViewModel.confirmCheckInAsync()
+                        onConfirm()
+                    }
+                },
+                enabled = !confirmationState.isProcessing,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -241,7 +272,18 @@ fun ReadOnlyTextField(
 }
 
 @Composable
-fun BoardingPassCard(passengerName: String) {
+fun BoardingPassCard(
+    passengerName: String,
+    seatNumber: String = "N/A",
+    flightNumber: String = "LH007",
+    gate: String = "A2",
+    origin: String = "LON",
+    destination: String = "RIO",
+    boardingTime: String = "08:15 AM",
+    departTime: String = "08:45 AM",
+    arrivalTime: String = "12:00 PM",
+    seatClass: String = "Economy"
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -251,20 +293,20 @@ fun BoardingPassCard(passengerName: String) {
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    Row(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("GOL", color = Color(0xFFF97316), fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(flightNumber, color = Color(0xFFF97316), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("Flight", fontSize = 10.sp, color = Color.Gray)
-                        Text("LH007", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
+                        Text("Flight", fontSize = 9.sp, color = Color.Gray)
+                        Text(flightNumber, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("Gate", fontSize = 10.sp, color = Color.Gray)
-                        Text("A2", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
+                        Text("Gate", fontSize = 9.sp, color = Color.Gray)
+                        Text(gate, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
                     }
                 }
             }
@@ -272,54 +314,54 @@ fun BoardingPassCard(passengerName: String) {
             CutoutDashedLine()
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("London", fontSize = 12.sp, color = Color(0xFF1942D8), fontWeight = FontWeight.Bold)
-                    Text("LON", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                    Text(origin, fontSize = 10.sp, color = Color(0xFF1942D8), fontWeight = FontWeight.Bold)
+                    Text(origin.uppercase(), fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
-                Icon(Icons.Default.Flight, contentDescription = null, tint = Color(0xFF1942D8), modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.Flight, contentDescription = null, tint = Color(0xFF1942D8), modifier = Modifier.size(24.dp))
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("Rio de Janeiro", fontSize = 12.sp, color = Color(0xFF1942D8), fontWeight = FontWeight.Bold)
-                    Text("RIO", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                    Text(destination, fontSize = 10.sp, color = Color(0xFF1942D8), fontWeight = FontWeight.Bold)
+                    Text(destination.uppercase(), fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("Boarding Time", fontSize = 10.sp, color = Color.Gray)
-                    Text("08:15 AM", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
+                    Text("Boarding Time", fontSize = 9.sp, color = Color.Gray)
+                    Text(boardingTime, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
                 }
                 Column {
-                    Text("Departs", fontSize = 10.sp, color = Color.Gray)
-                    Text("08:45 AM", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
+                    Text("Departs", fontSize = 9.sp, color = Color.Gray)
+                    Text(departTime, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("Arrives", fontSize = 10.sp, color = Color.Gray)
-                    Text("12:00 PM", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
+                    Text("Arrives", fontSize = 9.sp, color = Color.Gray)
+                    Text(arrivalTime, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             CutoutDashedLine()
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Passenger", fontSize = 10.sp, color = Color.Gray)
-                    Text(passengerName, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
+                    Text("Passenger", fontSize = 9.sp, color = Color.Gray)
+                    Text(passengerName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("Seat", fontSize = 10.sp, color = Color.Gray)
-                    Text("3F", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
+                    Text("Seat", fontSize = 9.sp, color = Color.Gray)
+                    Text(seatNumber, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1942D8))
                 }
             }
 

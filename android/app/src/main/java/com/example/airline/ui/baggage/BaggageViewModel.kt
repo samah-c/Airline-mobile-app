@@ -34,6 +34,10 @@ class BaggageViewModel : ViewModel() {
         }
     }
 
+    fun setCabinWeight(value: Int) {
+        _uiState.update { it.copy(cabinWeight = value.coerceAtLeast(0)) }
+    }
+
     // --- Bagage Soute ---
     fun incrementHoldCount() {
         _uiState.update {
@@ -56,7 +60,8 @@ class BaggageViewModel : ViewModel() {
     }
 
     // --- Navigation ---
-    fun confirm() {
-        // TODO: Appeler le backend ou naviguer vers le paiement
+    fun confirm(onSuccess: () -> Unit) {
+        // TODO: Appeler le backend ou persister les données avant navigation
+        onSuccess()
     }
 }

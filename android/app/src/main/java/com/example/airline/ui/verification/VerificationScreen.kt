@@ -10,23 +10,33 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.airline.ui.checkin.CheckInViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VerificationScreen(
-    viewModel: CheckInViewModel,
+    viewModel: VerificationViewModel = viewModel(),
+    checkInViewModel: CheckInViewModel,
     onBack: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val checkInState by checkInViewModel.uiState.collectAsState()
+    val verificationState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(checkInState) {
+        viewModel.initializeFrom(checkInState)
+    }
 
     Scaffold(
         topBar = {
@@ -88,21 +98,21 @@ fun VerificationScreen(
             Spacer(modifier = Modifier.height(16.dp))
             CustomTextField(
                 label = "Last Name",
-                value = state.lastName,
-                onValueChange = { viewModel.updateLastName(it) }
+                value = verificationState.lastName,
+                onValueChange = viewModel::updateLastName
             )
             Spacer(modifier = Modifier.height(16.dp))
             CustomTextField(
                 label = "First Name",
-                value = state.firstName,
-                onValueChange = { viewModel.updateFirstName(it) }
+                value = verificationState.firstName,
+                onValueChange = viewModel::updateFirstName
             )
             Spacer(modifier = Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 CustomTextField(
                     label = "Date of birth",
-                    value = state.dob,
-                    onValueChange = { viewModel.updateDob(it) },
+                    value = verificationState.dob,
+                    onValueChange = viewModel::updateDob,
                     modifier = Modifier.weight(1f),
                     placeholder = "jj/mm/aaaa",
                     trailingIcon = {
@@ -111,16 +121,16 @@ fun VerificationScreen(
                 )
                 CustomTextField(
                     label = "Gender",
-                    value = state.gender,
-                    onValueChange = { viewModel.updateGender(it) },
+                    value = verificationState.gender,
+                    onValueChange = viewModel::updateGender,
                     modifier = Modifier.weight(1f)
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
             CustomTextField(
                 label = "Nationality",
-                value = state.nationality,
-                onValueChange = { viewModel.updateNationality(it) }
+                value = verificationState.nationality,
+                onValueChange = viewModel::updateNationality
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -129,57 +139,50 @@ fun VerificationScreen(
             Spacer(modifier = Modifier.height(16.dp))
             CustomTextField(
                 label = "Passport Number",
-                value = state.passportNumber,
-                onValueChange = { viewModel.updatePassportNumber(it) }
+                value = verificationState.passportNumber,
+                onValueChange = viewModel::updatePassportNumber
             )
             Spacer(modifier = Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 CustomTextField(
                     label = "Issue Date",
-                    value = state.issueDate,
-                    onValueChange = { viewModel.updateIssueDate(it) },
+                    value = verificationState.issueDate,
+                    onValueChange = viewModel::updateIssueDate,
                     modifier = Modifier.weight(1f),
                     placeholder = "jj/mm/aaaa"
                 )
                 CustomTextField(
                     label = "Expiration Date",
-                    value = state.expirationDate,
-                    onValueChange = { viewModel.updateExpirationDate(it) },
+                    value = verificationState.expirationDate,
+                    onValueChange = viewModel::updateExpirationDate,
                     modifier = Modifier.weight(1f),
-                    placeholder = "jj/mm/aaaa"
+                    placeholder = "jj/mm/aaaa",
+                    readOnly = true
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
             CustomTextField(
                 label = "Issuing Authority",
-                value = state.issuingAuthority,
-                onValueChange = { viewModel.updateIssuingAuthority(it) }
+                value = verificationState.issuingAuthority,
+                onValueChange = viewModel::updateIssuingAuthority
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            SectionTitle("✈️", "Contact Information")
-            Spacer(modifier = Modifier.height(16.dp))
-            CustomTextField(
-                label = "Email",
-                value = state.email,
-                onValueChange = { viewModel.updateEmail(it) }
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            CustomTextField(
-                label = "Phone number",
-                value = state.phoneNumber,
-                onValueChange = { viewModel.updatePhoneNumber(it) },
-                placeholder = "123-456-7890",
-                leadingIcon = {
-                    Text("🇩🇿", modifier = Modifier.padding(start = 12.dp, end = 8.dp), fontSize = 20.sp)
-                }
-            )
-
             Spacer(modifier = Modifier.height(48.dp))
 
+            verificationState.errorMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = Color(0xFFB91C1C),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
             Button(
-                onClick = onConfirm,
+                onClick = { viewModel.verifyPassport(checkInViewModel, onConfirm) },
+                enabled = !verificationState.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -200,7 +203,7 @@ fun StepBar(isActive: Boolean, modifier: Modifier = Modifier) {
         modifier = modifier
             .height(4.dp)
             .background(
-                color = if (isActive) Color(0xFF4AC29A) else Color(0xFFE0E0E0),
+                color = if (isActive) Color(0xFF1942D8) else Color(0xFFE5E7EB),
                 shape = RoundedCornerShape(2.dp)
             )
     )
@@ -244,12 +247,14 @@ fun CustomTextField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String = "",
+    readOnly: Boolean = false,
     trailingIcon: @Composable (() -> Unit)? = null,
     leadingIcon: @Composable (() -> Unit)? = null
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
+        readOnly = readOnly,
         label = { Text(label, color = Color(0xFF6B7280), fontSize = 12.sp) },
         placeholder = if (placeholder.isNotEmpty()) { { Text(placeholder, color = Color(0xFF9CA3AF) ) } } else null,
         modifier = modifier

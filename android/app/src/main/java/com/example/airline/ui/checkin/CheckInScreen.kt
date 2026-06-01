@@ -4,15 +4,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Flight
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -43,23 +42,35 @@ fun CheckInScreen(
     viewModel: CheckInViewModel,
     onScanPassport: () -> Unit,
     onVerification: () -> Unit,
+    onSeatSelection: () -> Unit,
+    onBaggage: () -> Unit,
     onFlightOptions: () -> Unit,
     onFinish: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Logic to determine step status based on ViewModel state
-    // Step 1 is personal info (passport scan)
-    val isStep1Done = uiState.passportNumber.isNotEmpty()
-    
-    // To match the screenshot exactly for the user:
-    // We force Step 1 as COMPLETED and Step 2 as ACTIVE as shown in the image.
+    val stepCompletion = listOf(
+        uiState.passportNumber.isNotBlank(),
+        uiState.isPassportVerified,
+        uiState.seatNumber != null,
+        uiState.cabinBags > 0 || uiState.checkedBags > 0,
+        uiState.selectedMeal.isNotBlank() || uiState.wheelchairAssistance || uiState.visualImpairment || uiState.hearingImpairment || uiState.medicalEquipmentService || uiState.infantOnLap || uiState.travellingWithPet
+    )
+
+    val firstIncompleteStep = stepCompletion.indexOfFirst { !it }.let { if (it == -1) stepCompletion.lastIndex else it }
+
+    fun stepStatus(index: Int): StepStatus = when {
+        stepCompletion[index] -> StepStatus.COMPLETED
+        firstIncompleteStep == index -> StepStatus.ACTIVE
+        else -> StepStatus.INACTIVE
+    }
+
     val steps = listOf(
-        StepInfo("Personal info", "Passeport Scan", StepStatus.COMPLETED),
-        StepInfo("Verification", "Confirm Your Details", StepStatus.ACTIVE),
-        StepInfo("Seat Selection", "Choose Your Seat", StepStatus.INACTIVE),
-        StepInfo("Baggage", "Declare Your Luggage", StepStatus.INACTIVE),
-        StepInfo("Flight Options", "Services & Preferences", StepStatus.INACTIVE)
+        StepInfo("Personal info", "Passeport Scan", stepStatus(0)),
+        StepInfo("Verification", "Confirm Your Details", stepStatus(1)),
+        StepInfo("Seat Selection", "Choose Your Seat", stepStatus(2)),
+        StepInfo("Baggage", "Declare Your Luggage", stepStatus(3)),
+        StepInfo("Flight Options", "Services & Preferences", stepStatus(4))
     )
 
     Scaffold(
@@ -88,7 +99,6 @@ fun CheckInScreen(
                 )
             )
         },
-
         containerColor = Color.White
     ) { paddingValues ->
         Column(
@@ -96,6 +106,7 @@ fun CheckInScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 32.dp, vertical = 40.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             steps.forEachIndexed { index, step ->
                 Row(
@@ -123,11 +134,13 @@ fun CheckInScreen(
                     Row(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(top = 4.dp)
+                            .padding(top = 8.dp)
                             .clickable(enabled = step.status != StepStatus.INACTIVE) {
                                 when (index) {
                                     0 -> onScanPassport()
                                     1 -> onVerification()
+                                    2 -> onSeatSelection()
+                                    3 -> onBaggage()
                                     4 -> onFlightOptions()
                                 }
                             },
@@ -197,10 +210,11 @@ private fun TimelineConnector(active: Boolean) {
     Column(
         modifier = Modifier
             .width(40.dp)
-            .height(70.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .height(64.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Canvas(modifier = Modifier.weight(1f).width(2.dp)) {
+        Canvas(modifier = Modifier.height(16.dp).width(2.dp)) {
             drawLine(
                 color = color,
                 start = Offset(size.width / 2, 0f),
@@ -213,9 +227,9 @@ private fun TimelineConnector(active: Boolean) {
             imageVector = Icons.Default.Flight,
             contentDescription = null,
             tint = color,
-            modifier = Modifier.size(20.dp).padding(vertical = 2.dp)
+            modifier = Modifier.size(20.dp)
         )
-        Canvas(modifier = Modifier.weight(1f).width(2.dp)) {
+        Canvas(modifier = Modifier.height(16.dp).width(2.dp)) {
             drawLine(
                 color = color,
                 start = Offset(size.width / 2, 0f),

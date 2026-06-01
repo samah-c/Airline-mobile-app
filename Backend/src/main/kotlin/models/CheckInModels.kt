@@ -63,6 +63,11 @@ data class SpecialRequestsRequest(
 )
 
 @Serializable
+data class ConfirmCheckInRequest(
+    val checkInId: Int
+)
+
+@Serializable
 data class CheckInSession(
     val id: Int,
     val bookingId: Int,
