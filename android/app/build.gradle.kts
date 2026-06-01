@@ -38,6 +38,7 @@ android {
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -122,6 +123,9 @@ dependencies {
 
     // ── ThreeTenABP (dates) ───────────────────────────────────
     implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
 
     // ── Tests ─────────────────────────────────────────────────
     testImplementation(libs.junit)

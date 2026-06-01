@@ -6,11 +6,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.airline.data.model.BoardingPassModel
 import com.example.airline.data.repository.BoardingPassRepository
+import com.example.airline.data.repository.PdfDownloadResult
 import com.example.airline.data.repository.OfflineBoardingPassCache
 import com.example.airline.local.AppDatabase
 import com.example.airline.local.BoardingPassEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class BoardingPassUiState(
@@ -19,6 +21,7 @@ data class BoardingPassUiState(
     val isGenerating: Boolean = false,
     val isDownloadingPdf: Boolean = false,
     val pdfBytes: ByteArray? = null,
+    val pdfFilename: String? = null,
     val error: String? = null
 )
 
@@ -28,17 +31,16 @@ class BoardingPassViewModel(
 ) : AndroidViewModel(application) {
 
     private val dao = AppDatabase.getInstance(application).boardingPassDao()
-
     private val _uiState = MutableStateFlow(BoardingPassUiState())
     val uiState: StateFlow<BoardingPassUiState> = _uiState
 
     fun loadBoardingPass(checkInId: Int) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val bp = repository.getBoardingPass(checkInId)
                 if (bp != null) {
-                    _uiState.value = _uiState.value.copy(boardingPass = bp, isLoading = false)
+                    _uiState.update { it.copy(boardingPass = bp, isLoading = false) }
                 } else {
                     loadFromRoom()
                 }
@@ -50,20 +52,19 @@ class BoardingPassViewModel(
 
     fun generateBoardingPass(checkInId: Int) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isGenerating = true, error = null)
+            _uiState.update { it.copy(isGenerating = true, error = null) }
             try {
                 val bp = repository.generateBoardingPass(checkInId)
                 if (bp != null) {
-                    _uiState.value = _uiState.value.copy(boardingPass = bp, isGenerating = false)
+                    _uiState.update { it.copy(boardingPass = bp, isGenerating = false) }
                     OfflineBoardingPassCache.save(bp)
-                    // Save to Room for persistent offline access
                     dao.insert(bp.toEntity())
                 } else {
-                    _uiState.value = _uiState.value.copy(isGenerating = false, error = "Failed to generate boarding pass")
+                    _uiState.update { it.copy(isGenerating = false, error = "Failed to generate boarding pass") }
                     loadFromRoom()
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isGenerating = false, error = e.message)
+                _uiState.update { it.copy(isGenerating = false, error = e.message) }
                 loadFromRoom()
             }
         }
@@ -71,27 +72,41 @@ class BoardingPassViewModel(
 
     fun downloadPdf(checkInId: Int) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isDownloadingPdf = true)
+            _uiState.update { it.copy(isDownloadingPdf = true, error = null) }
             try {
-                val bytes = repository.downloadPdf(checkInId)
-                _uiState.value = _uiState.value.copy(isDownloadingPdf = false, pdfBytes = bytes)
+                val result = repository.downloadPdf(checkInId)
+                _uiState.update {
+                    it.copy(
+                        isDownloadingPdf = false,
+                        pdfBytes = result?.bytes,
+                        pdfFilename = result?.filename
+                    )
+                }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isDownloadingPdf = false, error = e.message)
+                _uiState.update {
+                    it.copy(isDownloadingPdf = false, error = "Download failed: ${e.localizedMessage}")
+                }
             }
         }
+    }
+
+    fun clearPdfBytes() {
+        _uiState.update { it.copy(pdfBytes = null, pdfFilename = null) }
     }
 
     private suspend fun loadFromRoom() {
         val saved = dao.getAll().firstOrNull()
         if (saved != null) {
-            _uiState.value = _uiState.value.copy(
-                boardingPass = saved.toModel(),
-                isLoading    = false,
-                isGenerating = false,
-                error        = null
-            )
+            _uiState.update {
+                it.copy(
+                    boardingPass = saved.toModel(),
+                    isLoading = false,
+                    isGenerating = false,
+                    error = null
+                )
+            }
         } else {
-            _uiState.value = _uiState.value.copy(isLoading = false, isGenerating = false)
+            _uiState.update { it.copy(isLoading = false, isGenerating = false) }
         }
     }
 
@@ -107,30 +122,14 @@ class BoardingPassViewModel(
 }
 
 private fun BoardingPassModel.toEntity() = BoardingPassEntity(
-    flightNumber  = flightNumber,
-    gate          = gate,
-    origin        = origin,
-    destination   = destination,
-    passengerName = passengerName,
-    seat          = seat,
-    seatClass     = seatClass,
-    departureTime = departureTime,
-    barcode       = barcode,
-    qrCode        = qrCode
+    flightNumber = flightNumber, gate = gate, origin = origin, destination = destination,
+    passengerName = passengerName, seat = seat, seatClass = seatClass,
+    departureTime = departureTime, barcode = barcode, qrCode = qrCode
 )
 
 private fun BoardingPassEntity.toModel() = BoardingPassModel(
-    flightNumber    = flightNumber,
-    gate            = gate,
-    origin          = origin,
-    originCity      = origin,
-    destination     = destination,
-    destinationCity = destination,
-    passengerName   = passengerName,
-    seat            = seat,
-    seatClass       = seatClass,
-    boardingTime    = departureTime,
-    departureTime   = departureTime,
-    barcode         = barcode,
-    qrCode          = qrCode
+    flightNumber = flightNumber, gate = gate, origin = origin, originCity = origin,
+    destination = destination, destinationCity = destination, passengerName = passengerName,
+    seat = seat, seatClass = seatClass, boardingTime = departureTime,
+    departureTime = departureTime, barcode = barcode, qrCode = qrCode
 )
