@@ -8,12 +8,14 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
     // localhost via adb reverse tcp:8080 tcp:8080
-    private const val BASE_URL = "http://localhost:8080/"
-
+    //private const val BASE_URL = "http://localhost:8080/"
+    //private const val BASE_URL = "http://10.0.23.149:8080/"
+      private const val BASE_URL = "http://10.80.136.174:8080/"
     // JWT token stored after login — set via TokenManager.setToken(token)
     private var authToken: String? = null
 
     fun setToken(token: String) { authToken = token }
+    fun getToken(): String? = authToken
     fun clearToken() { authToken = null }
 
     private val authInterceptor = Interceptor { chain ->

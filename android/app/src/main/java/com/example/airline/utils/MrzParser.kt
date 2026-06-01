@@ -1,7 +1,11 @@
 package com.example.airline.utils
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
 object MrzParser {
     private val mrzLineRegex = Regex("[A-Z0-9<]{30,44}")
+    private val displayDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
     fun extractFromRawText(rawText: String): MrzData? {
         val normalizedText = rawText
@@ -82,9 +86,9 @@ object MrzParser {
                 givenNames = givenNames,
                 passportNumber = passportNumber,
                 nationality = nationality,
-                birthDate = birthDate,
+                birthDate = formatMrzDate(birthDate),
                 sex = sex,
-                expiryDate = expiryDate,
+                expiryDate = formatMrzDate(expiryDate),
                 personalNumber = personalNumber
             )
         } catch (e: Exception) {
@@ -109,6 +113,27 @@ object MrzParser {
             sum += v * weights[i % 3]
         }
         return sum % 10
+    }
+
+    private fun formatMrzDate(value: String): String {
+        if (value.length != 6) return value
+
+        val year = value.substring(0, 2).toIntOrNull() ?: return value
+        val month = value.substring(2, 4).toIntOrNull() ?: return value
+        val day = value.substring(4, 6).toIntOrNull() ?: return value
+
+        val currentYear = LocalDate.now().year
+        val century = currentYear / 100 * 100
+        var fullYear = century + year
+
+        if (fullYear > currentYear + 20) fullYear -= 100
+        if (fullYear < currentYear - 120) fullYear += 100
+
+        return try {
+            LocalDate.of(fullYear, month, day).format(displayDateFormatter)
+        } catch (e: Exception) {
+            value
+        }
     }
 
     private fun validateMrzChecks(line1: String, line2: String): Boolean {

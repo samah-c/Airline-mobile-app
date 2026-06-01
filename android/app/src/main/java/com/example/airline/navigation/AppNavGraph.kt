@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -23,6 +24,7 @@ import com.example.airline.ui.forgotpassword.ForgotPasswordScreen
 import com.example.airline.ui.login.LoginScreen
 import com.example.airline.ui.onboarding.OnboardingScreen
 import com.example.airline.ui.profile.ProfileScreen
+import com.example.airline.network.RetrofitClient
 import com.example.airline.ui.scan.PassportScanScreen
 import com.example.airline.ui.scan.PassportScanViewModel
 import com.example.airline.ui.services.ServicesScreen
@@ -58,6 +60,7 @@ fun AppNavGraph(
     navController: NavHostController = rememberNavController()
 ) {
     val checkInViewModel: CheckInViewModel = viewModel()
+    val checkInState by checkInViewModel.uiState.collectAsState()
     val passportScanViewModel: PassportScanViewModel = viewModel()
 
     val currentEntry by navController.currentBackStackEntryAsState()
@@ -144,7 +147,13 @@ fun AppNavGraph(
                 ProfileScreen(
                     onNavigateBack          = { navController.popBackStack() },
                     onNavigateToFlightHistory = { navController.navigate(Routes.FLIGHT_HISTORY) },
-                    onNavigateToSettings    = { navController.navigate(Routes.SETTINGS) }
+                    onNavigateToSettings    = { navController.navigate(Routes.SETTINGS) },
+                    onStartTestCheckIn = { bookingId, token ->
+                        if (token.isNotBlank()) RetrofitClient.setToken(token)
+                        checkInViewModel.startCheckIn(bookingId, onSuccess = {
+                            navController.navigate(Routes.CHECKIN)
+                        }, onError = { message -> println("Test check-in failed: $message") })
+                    }
                 )
             }
 
@@ -152,7 +161,13 @@ fun AppNavGraph(
                 ProfileScreen(
                     onNavigateBack          = { navController.popBackStack() },
                     onNavigateToFlightHistory = { navController.navigate(Routes.FLIGHT_HISTORY) },
-                    onNavigateToSettings    = { navController.navigate(Routes.SETTINGS) }
+                    onNavigateToSettings    = { navController.navigate(Routes.SETTINGS) },
+                    onStartTestCheckIn = { bookingId, token ->
+                        if (token.isNotBlank()) RetrofitClient.setToken(token)
+                        checkInViewModel.startCheckIn(bookingId, onSuccess = {
+                            navController.navigate(Routes.CHECKIN)
+                        }, onError = { message -> println("Test check-in failed: $message") })
+                    }
                 )
             }
 
@@ -175,8 +190,9 @@ fun AppNavGraph(
             // ── Baggage ───────────────────────────────────────
             composable(Routes.BAGGAGE) {
                 BaggageScreen(
+                    checkInViewModel = checkInViewModel,
                     onNavigateBack = { navController.popBackStack() },
-                    onConfirm      = { navController.navigate(Routes.HOME) }
+                    onConfirm      = { navController.navigate(Routes.SERVICES) }
                 )
             }
 
@@ -186,6 +202,8 @@ fun AppNavGraph(
                     viewModel       = checkInViewModel,
                     onScanPassport  = { navController.navigate(Routes.SCAN) },
                     onVerification  = { navController.navigate(Routes.CONFIRM_DETAILS) },
+                    onSeatSelection = { navController.navigate(Routes.SEAT_SELECTION) },
+                    onBaggage       = { navController.navigate(Routes.BAGGAGE) },
                     onFlightOptions = { navController.navigate(Routes.SERVICES) },
                     onFinish        = { navController.popBackStack() }
                 )
@@ -204,39 +222,39 @@ fun AppNavGraph(
 
             composable(Routes.CONFIRM_DETAILS) {
                 VerificationScreen(
-                    viewModel  = checkInViewModel,
-                    onBack     = { navController.popBackStack() },
-                    onConfirm  = { navController.navigate(Routes.SERVICES) }
+                    checkInViewModel = checkInViewModel,
+                    onBack           = { navController.popBackStack() },
+                    onConfirm        = { navController.navigate(Routes.SEAT_SELECTION) }
                 )
             }
 
             composable(Routes.SERVICES) {
                 ServicesScreen(
-                    viewModel  = checkInViewModel,
-                    onBack     = { navController.popBackStack() },
-                    onConfirm  = { navController.navigate(Routes.FINAL_CONFIRMATION) },
-                    onSkip     = { navController.navigate(Routes.FINAL_CONFIRMATION) }
+                    checkInViewModel = checkInViewModel,
+                    onBack           = { navController.popBackStack() },
+                    onConfirm        = { navController.navigate(Routes.FINAL_CONFIRMATION) }
                 )
             }
 
             composable(Routes.FINAL_CONFIRMATION) {
                 ConfirmationScreen(
-                    viewModel  = checkInViewModel,
-                    onBack     = { navController.popBackStack() },
-                    onConfirm  = {
-                        navController.navigate(Routes.SEAT_SELECTION) {
+                    checkInViewModel = checkInViewModel,
+                    onBack           = { navController.popBackStack() },
+                    onConfirm        = {
+                        navController.navigate(Routes.BOARDING_PASS) {
                             popUpTo(Routes.CHECKIN) { inclusive = true }
                         }
                     },
-                    onNext = { navController.navigate(Routes.SEAT_SELECTION) }
+                    onNext = { navController.popBackStack(Routes.CHECKIN, false) }
                 )
             }
 
             // ── Feriel's screens ──────────────────────────────
             composable(Routes.SEAT_SELECTION) {
                 SeatSelectionScreen(
+                    checkInId = checkInState.checkInSessionId ?: 0,
                     onBack = { navController.popBackStack() },
-                    onNext = { navController.navigate(Routes.BOARDING_PASS) }
+                    onNext = { navController.navigate(Routes.BAGGAGE) }
                 )
             }
 

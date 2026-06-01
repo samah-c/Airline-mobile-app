@@ -9,8 +9,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Route.boardingPassRoutes(boardingPassService: BoardingPassService) {
-    // TODO: restore authenticate { } after login is wired to real backend
-
+    authenticate {
         // Générer le boarding pass
         post("/api/boarding-pass/generate") {
             val request = call.receive<GenerateBoardingPassRequest>()
@@ -49,4 +48,5 @@ fun Route.boardingPassRoutes(boardingPassService: BoardingPassService) {
             )
             call.respondBytes(pdfBytes, contentType = io.ktor.http.ContentType.Application.Pdf)
         }
+    }
 }

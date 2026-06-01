@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
@@ -35,6 +36,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.airline.R
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.airline.ui.checkin.CheckInViewModel
 
 // ── Colors ─────────────────────────────
 private val PageBg              = Color.White    // Fond principal
@@ -93,10 +96,31 @@ private fun initialBaggageState() = listOf(
 
 @Composable
 fun BaggageScreen(
+    viewModel: BaggageViewModel = viewModel(),
+    checkInViewModel: CheckInViewModel? = null,
     onNavigateBack: () -> Unit = {},
     onConfirm: () -> Unit = {}
 ) {
-    var baggageItems by remember { mutableStateOf(initialBaggageState()) }
+    val state by viewModel.uiState.collectAsState()
+    val baggageItems = listOf(
+        BaggageItem(
+            id = "cabin",
+            type = BagType.CABIN,
+            state = BagState.INCLUDED,
+            count = state.cabinBagCount,
+            maxWeight = 10,
+            currentWeight = state.cabinWeight,
+            dimensions = "55 x 35 x 25 cm"
+        ),
+        BaggageItem(
+            id = "hold",
+            type = BagType.HOLD,
+            state = BagState.PAID,
+            count = state.holdBagCount,
+            dimensions = "158 cm linéaires (L+H+P)",
+            price = 65
+        )
+    )
     val scrollState = rememberScrollState()
     var selectedSpecialItems by remember { mutableStateOf(emptySet<String>()) }
 
@@ -122,7 +146,17 @@ fun BaggageScreen(
                 // Sections scrollables
                 baggageItems.forEach { item ->
                     CounterBaggageSection(item) { updated ->
-                        baggageItems = baggageItems.map { if (it.id == updated.id) updated else it }
+                        when (updated.id) {
+                            "cabin" -> {
+                                if (updated.count > state.cabinBagCount) viewModel.incrementCabinCount()
+                                else if (updated.count < state.cabinBagCount) viewModel.decrementCabinCount()
+                                viewModel.setCabinWeight(updated.currentWeight)
+                            }
+                            "hold" -> {
+                                if (updated.count > state.holdBagCount) viewModel.incrementHoldCount()
+                                else if (updated.count < state.holdBagCount) viewModel.decrementHoldCount()
+                            }
+                        }
                     }
                 }
 
@@ -136,14 +170,25 @@ fun BaggageScreen(
                         }
                     }
                 )
-                SummarySection(baggageItems)
+                SummarySection(state, selectedSpecialItems)
 
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
             // Bouton Confirmer fixe en bas à droite (comme NextButton)
             ConfirmButton(
-                onClick = onConfirm,
+                onClick = {
+                    val cabinCount = baggageItems.firstOrNull { it.id == "cabin" }?.count ?: 1
+                    val holdCount = baggageItems.firstOrNull { it.id == "hold" }?.count ?: 0
+                    val estimatedWeight = baggageItems.firstOrNull { it.id == "cabin" }?.currentWeight?.toDouble() ?: 0.0
+                    checkInViewModel?.declareBaggage(
+                        cabinBags = cabinCount,
+                        checkedBags = holdCount,
+                        estimatedWeight = estimatedWeight,
+                        hasSpecialItems = selectedSpecialItems.isNotEmpty(),
+                        onSuccess = onConfirm
+                    )
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 24.dp)
@@ -205,7 +250,7 @@ private fun BaggageHeader(onBack: () -> Unit) {
                         .weight(1f)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(if (i < 4) Color(0xFF1849D6) else Color(0xFFE5E7EB))
+                        .background(if (i < 4) Color(0xFF1942D8) else Color(0xFFE5E7EB))
                 )
             }
         }
@@ -620,8 +665,13 @@ private fun SpecialItemChip(
 // ── Section Récapitulatif ─────────────────────────────────────────────────────
 
 @Composable
-private fun SummarySection(items: List<BaggageItem>) {
-    BaggageCard (hasBlueBorder = false) {
+private fun SummarySection(state: BaggageUiState, selectedSpecialItems: Set<String>) {
+    val cabinSummary = "${state.cabinBagCount} x ${state.cabinWeight} kg"
+    val holdSummary = if (state.holdBagCount > 0) "${state.holdBagCount} x 23 kg" else "Aucun"
+    val specialSummary = if (selectedSpecialItems.isEmpty()) "Aucun" else selectedSpecialItems.joinToString(", ")
+    val totalWeight = state.cabinWeight + state.holdBagCount * 23
+
+    BaggageCard(hasBlueBorder = false) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -640,9 +690,9 @@ private fun SummarySection(items: List<BaggageItem>) {
 
             // Liste des bagages
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SummaryRow("Bagage cabine", "1 x 7 kg")
-                SummaryRow("Bagage soute", "Aucun")
-                SummaryRow("Objets spéciaux", "Aucun")
+                SummaryRow("Bagage cabine", cabinSummary)
+                SummaryRow("Bagage soute", holdSummary)
+                SummaryRow("Objets spéciaux", specialSummary)
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -661,9 +711,9 @@ private fun SummarySection(items: List<BaggageItem>) {
                 ) {
                     Column {
                         Text("Surcoût bagages", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
-                        Text("Poids total: 7 kg", fontSize = 12.sp, color = TextSecondary)
+                        Text("Poids total: ${totalWeight} kg", fontSize = 12.sp, color = TextSecondary)
                     }
-                    Text("0 $", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PriceGreen)
+                    Text(state.displayPrice, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PriceGreen)
                 }
             }
         }

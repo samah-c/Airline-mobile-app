@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.airline.notifications.TokenRepository
+import com.example.airline.network.RetrofitClient
+import com.example.airline.network.LoginRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,20 +65,22 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             try {
-                // Simulation frontend-only (pas de backend)
-                kotlinx.coroutines.delay(1500)
+                // Call backend API to login
+                val response = RetrofitClient.api.login(
+                    LoginRequest(email = currentState.email, password = currentState.password)
+                )
 
-                // Mock: accept any valid format email/password
-                val mockSuccess = !currentState.isOfflineMode ||
-                        (currentState.email == "test@test.com" && currentState.password == "password")
-
-                if (mockSuccess) {
+                if (response.isSuccessful && response.body() != null) {
+                    val authResponse = response.body()!!
+                    // Store JWT token in RetrofitClient
+                    RetrofitClient.setToken(authResponse.token)
+                    
                     _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                     TokenRepository.fetchAndSaveToken(getApplication())
 
                     onSuccess()
                 } else {
-                    throw Exception("Invalid credentials")
+                    throw Exception(response.message() ?: "Login failed")
                 }
             } catch (e: Exception) {
                 _uiState.update {
