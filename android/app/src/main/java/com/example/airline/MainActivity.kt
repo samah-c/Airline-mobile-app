@@ -8,7 +8,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.navigation.compose.rememberNavController
+import com.example.airline.data.local.SessionManager
 import com.example.airline.navigation.AppNavGraph
+import com.example.airline.network.RetrofitClient
 import com.example.airline.ui.theme.AirlineTheme
 import com.google.firebase.messaging.FirebaseMessaging
 
@@ -21,6 +23,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val savedToken = SessionManager.getToken(this)
+        if (savedToken != null) {
+            RetrofitClient.setToken(savedToken)
+        }
         // Test Firebase
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {

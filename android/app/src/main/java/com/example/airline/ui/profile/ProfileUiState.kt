@@ -11,5 +11,5 @@ data class ProfileUiState(
     val errorMessage: String? = null
 ) {
     val isFormValid: Boolean
-        get() = firstName.isNotBlank() && lastName.isNotBlank() && email.isNotBlank()
+        get() = firstName.isNotBlank() && lastName.isNotBlank()
 }

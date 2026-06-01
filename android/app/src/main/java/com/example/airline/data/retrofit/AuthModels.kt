@@ -25,3 +25,15 @@ data class AuthResponse(
 data class GoogleSignInRequest(
     val idToken: String
 )
+
+data class UserResponse(
+    val id: Int,
+    val name: String,
+    val email: String,
+    val phoneNumber: String
+)
+
+data class UpdateProfileRequest(
+    val name: String,
+    val phoneNumber: String
+)

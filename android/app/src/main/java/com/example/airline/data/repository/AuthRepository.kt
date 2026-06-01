@@ -1,6 +1,7 @@
 package com.example.airline.data.repository
 
 import com.example.airline.data.retrofit.AuthApiService
+import com.example.airline.data.retrofit.AuthResponse
 import com.example.airline.data.retrofit.LoginRequest
 import com.example.airline.data.retrofit.RegisterRequest
 import com.example.airline.data.retrofit.ForgotPasswordRequest
@@ -12,25 +13,23 @@ class AuthRepository {
     private val api: AuthApiService = RetrofitClient.retrofit
         .create(AuthApiService::class.java)
 
-    suspend fun login(email: String, password: String): Result<String> {
+    suspend fun login(email: String, password: String): Result<AuthResponse> {
         return try {
             val response = api.login(LoginRequest(email, password))
             if (response.isSuccessful) {
-                val token = response.body()?.token
+                val authResponse = response.body()
                     ?: return Result.failure(Exception("Empty response"))
-                Result.success(token)
+                Result.success(authResponse)  // ← retourne tout l'objet
             } else {
-                val msg = when (response.code()) {
+                Result.failure(Exception(when (response.code()) {
                     401 -> "Email ou mot de passe incorrect"
                     else -> "Erreur serveur (${response.code()})"
-                }
-                Result.failure(Exception(msg))
+                }))
             }
         } catch (e: Exception) {
             Result.failure(Exception("Impossible de joindre le serveur"))
         }
     }
-
     suspend fun register(
         name: String,
         email: String,

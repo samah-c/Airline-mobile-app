@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.airline.data.local.SessionManager
 import com.example.airline.data.repository.AuthRepository
 import com.example.airline.data.repository.GoogleAuthRepository
 import com.example.airline.network.RetrofitClient
@@ -71,8 +72,9 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             result.fold(
-                onSuccess = { token ->
-                    RetrofitClient.setToken(token)
+                onSuccess = { authResponse ->
+                    RetrofitClient.setToken(authResponse.token)
+                    SessionManager.saveSession(getApplication(), authResponse.token, authResponse.userId)
                     TokenRepository.fetchAndSaveToken(getApplication())
                     _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                     onSuccess()

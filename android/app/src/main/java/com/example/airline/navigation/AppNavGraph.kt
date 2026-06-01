@@ -1,10 +1,13 @@
 package com.example.airline.navigation
 
+import android.content.Context
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -56,6 +59,7 @@ object Routes {
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController()
+
 ) {
     val checkInViewModel: CheckInViewModel = viewModel()
     val passportScanViewModel: PassportScanViewModel = viewModel()
@@ -157,8 +161,17 @@ fun AppNavGraph(
             }
 
             composable(Routes.FLIGHT_HISTORY) {
-                FlightHistoryScreen(onNavigateBack = { navController.popBackStack() })
+                val context = LocalContext.current
+                val userId = remember {
+                    context.getSharedPreferences("auth", Context.MODE_PRIVATE)
+                        .getInt("user_id", -1)
+                }
+                FlightHistoryScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    userId = userId
+                )
             }
+
 
             composable(Routes.SETTINGS) {
                 SettingsScreen(
