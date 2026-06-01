@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.airline.R
 import com.example.airline.ui.theme.PrimaryBlue
+import com.example.airline.network.RetrofitClient
 import androidx.compose.material.icons.filled.Settings
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +42,7 @@ fun ProfileScreen(
     onNavigateBack: () -> Unit,
     onNavigateToFlightHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onStartTestCheckIn: (bookingId: Int, token: String) -> Unit,
     viewModel: ProfileViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -332,6 +334,43 @@ fun ProfileScreen(
                         fontWeight = FontWeight.Medium
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Dev: test check-in input
+            var testBookingId by remember { mutableStateOf("1") }
+            var testToken by remember { mutableStateOf(RetrofitClient.getToken() ?: "") }
+
+            LaunchedEffect(Unit) {
+                testToken = RetrofitClient.getToken() ?: ""
+            }
+
+            OutlinedTextField(
+                value = testBookingId,
+                onValueChange = { testBookingId = it },
+                label = { Text("Dev bookingId") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = testToken,
+                onValueChange = { testToken = it },
+                label = { Text("Dev JWT token") },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Paste JWT here") }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    val id = testBookingId.toIntOrNull() ?: 1
+                    onStartTestCheckIn(id, testToken)
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Start test check-in", fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(24.dp))

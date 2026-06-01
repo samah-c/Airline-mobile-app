@@ -42,9 +42,10 @@ class SeatSelectionViewModel(
 
     fun toggleSeat(seatId: String) {
         val current = _uiState.value.selectedSeats
-        // Airline check-in = 1 seat per passenger — selecting a new seat replaces the old one
+        val newSelection = if (seatId in current) emptySet() else setOf(seatId)
+        android.util.Log.d("SEAT_DEBUG", "Siège sélectionné: $seatId. Total: ${newSelection.size}")
         _uiState.value = _uiState.value.copy(
-            selectedSeats = if (seatId in current) emptySet() else setOf(seatId)
+            selectedSeats = newSelection
         )
     }
 
@@ -54,20 +55,41 @@ class SeatSelectionViewModel(
 
     fun confirmSelection(checkInId: Int, onSuccess: () -> Unit) {
         val seats = _uiState.value.selectedSeats
-        if (seats.isEmpty()) return
+        android.util.Log.d("SEAT_DEBUG", "Bouton cliqué. Sièges en mémoire: ${seats.size}, ID: $checkInId")
+        
+        if (seats.isEmpty()) {
+            android.util.Log.w("SEAT_DEBUG", "Aucun siège sélectionné. Navigation bloquée.")
+            _uiState.value = _uiState.value.copy(error = "Veuillez sélectionner un siège")
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isConfirming = true, error = null)
             try {
                 val seatId = seats.first()
+                android.util.Log.d("SEAT_DEBUG", "Appel API selectSeat pour le siège: $seatId")
+                
+                // On capture le résultat de l'API
                 val success = repository.selectSeat(checkInId, seatId)
+                
                 if (success) {
+                    android.util.Log.d("SEAT_DEBUG", "API Succès : Siège confirmé.")
                     _uiState.value = _uiState.value.copy(isConfirming = false, confirmed = true)
-                    onSuccess()
+                    onSuccess() // Navigation autorisée
                 } else {
-                    _uiState.value = _uiState.value.copy(isConfirming = false, error = "Failed to confirm seat")
+                    android.util.Log.e("SEAT_DEBUG", "API Échec : Le backend a refusé la sélection.")
+                    _uiState.value = _uiState.value.copy(
+                        isConfirming = false, 
+                        error = "Le serveur a refusé la sélection du siège."
+                    )
                 }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isConfirming = false, error = e.message)
+                android.util.Log.e("SEAT_DEBUG", "Erreur Réseau/API : ${e.message}")
+                _uiState.value = _uiState.value.copy(
+                    isConfirming = false, 
+                    error = "Erreur de connexion : ${e.message}"
+                )
+                // Pas de redirection en cas d'erreur
             }
         }
     }
