@@ -45,13 +45,6 @@ fun FlightLookUpResultScreen(
 
     Scaffold(
         topBar = { FlightLookUpResultTopBar() },
-        bottomBar = {
-            FlightLookUpResultBottomBar(
-                onNavigateHome    = onNavigateHome,
-                onNavigateBaggage = onNavigateBaggage,
-                onNavigateProfile = onNavigateProfile
-            )
-        },
         containerColor = Color.White
     ) { innerPadding ->
 
@@ -266,41 +259,4 @@ private fun FlightMiddle(duration: String, cabinClass: String) {
     }
 }
 
-// ── Bottom Nav ────────────────────────────────────────────────────────────────
-@Composable
-private fun FlightLookUpResultBottomBar(
-    onNavigateHome: () -> Unit,
-    onNavigateBaggage: () -> Unit,
-    onNavigateProfile: () -> Unit
-) {
-    NavigationBar(
-        containerColor = BrandBlue,
-        tonalElevation = 0.dp
-    ) {
-        NavigationBarItem(
-            selected = false,
-            onClick = onNavigateHome,
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = Color.White) },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.White.copy(alpha = 0.2f))
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = onNavigateBaggage,
-            icon = { Icon(Icons.Default.ShoppingBag, contentDescription = "Baggage", tint = Color.White) },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.White.copy(alpha = 0.2f))
-        )
-        NavigationBarItem(
-            selected = true,
-            onClick = {},
-            icon = { Icon(Icons.Default.AirplanemodeActive, contentDescription = "Flight", tint = Color.White) },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.White.copy(alpha = 0.2f))
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = onNavigateProfile,
-            icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = Color.White) },
-            colors = NavigationBarItemDefaults.colors(indicatorColor = Color.White.copy(alpha = 0.2f))
-        )
-    }
-}
 

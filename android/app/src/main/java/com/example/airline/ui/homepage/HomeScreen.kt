@@ -43,13 +43,6 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        bottomBar = {
-            HomeBottomBar(
-                onNavigateBaggage = onNavigateBaggage,
-                onNavigateCheckin = onNavigateCheckin,
-                onNavigateProfile = onNavigateProfile
-            )
-        },
         containerColor = Color.White
     ) { innerPadding ->
         Column(
@@ -286,60 +279,6 @@ private fun CheckInPromoCard(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-        )
-    }
-}
-
-// ── Bottom Navigation Bar ────────────────────────────────────────────────────
-@Composable
-private fun HomeBottomBar(
-    onNavigateBaggage: () -> Unit,
-    onNavigateCheckin: () -> Unit,
-    onNavigateProfile: () -> Unit
-) {
-    NavigationBar(
-        containerColor = BrandBlue,
-        tonalElevation = 0.dp
-    ) {
-        NavigationBarItem(
-            selected = true,
-            onClick = {},
-            icon = {
-                Icon(Icons.Default.Home, contentDescription = "Home", tint = Color.White)
-            },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = Color.White.copy(alpha = 0.2f)
-            )
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = onNavigateBaggage,
-            icon = {
-                Icon(Icons.Default.ShoppingBag, contentDescription = "Baggage", tint = Color.White)
-            },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = Color.White.copy(alpha = 0.2f)
-            )
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = onNavigateCheckin,
-            icon = {
-                Icon(Icons.Default.AirplanemodeActive, contentDescription = "Check-In", tint = Color.White)
-            },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = Color.White.copy(alpha = 0.2f)
-            )
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = onNavigateProfile,
-            icon = {
-                Icon(Icons.Default.Person, contentDescription = "Profile", tint = Color.White)
-            },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = Color.White.copy(alpha = 0.2f)
-            )
         )
     }
 }
