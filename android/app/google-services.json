@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "719458110731",
-    "project_id": "airline-app-tdm",
-    "storage_bucket": "airline-app-tdm.firebasestorage.app"
+    "project_number": "486909540404",
+    "project_id": "airline-checkin-8710e",
+    "storage_bucket": "airline-checkin-8710e.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:719458110731:android:2905580203039129d1660e",
+        "mobilesdk_app_id": "1:486909540404:android:ee666b00bce89161227261",
         "android_client_info": {
           "package_name": "com.example.airline"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "486909540404-9tfsdkeut0t6tac7s16dqs5me4522ab0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.airline",
+            "certificate_hash": "e52069767ed3a2347bbf0204ed12fe20040c48c1"
+          }
+        },
+        {
+          "client_id": "486909540404-8du9ojsngn05f9cohb1ns8bj9urhojm6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyAkMvAs5Xs2LTappVt2afUFVGPYbDSBMXk"
+          "current_key": "AIzaSyCjvftVWRWyCYY-3udcc62hpq2fUxjJPw0"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "486909540404-8du9ojsngn05f9cohb1ns8bj9urhojm6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

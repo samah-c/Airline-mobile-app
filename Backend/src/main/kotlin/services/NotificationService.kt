@@ -16,13 +16,17 @@ import java.time.LocalDateTime
 class NotificationService(private val database: Database) {
 
     init {
-        // Initialiser Firebase une seule fois
+        // Initialiser Firebase une seule fois (skip si le fichier credentials est absent)
         if (FirebaseApp.getApps().isEmpty()) {
-            val serviceAccount = FileInputStream("airline-checkin-8710e-firebase-adminsdk-fbsvc-f517d46ffd.json")
-            val options = FirebaseOptions.builder()
-                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                .build()
-            FirebaseApp.initializeApp(options)
+            try {
+                val serviceAccount = FileInputStream("airline-checkin-8710e-firebase-adminsdk-fbsvc-f517d46ffd.json")
+                val options = FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .build()
+                FirebaseApp.initializeApp(options)
+            } catch (e: Exception) {
+                println("⚠️  Firebase not initialized (credentials file missing): ${e.message}")
+            }
         }
     }
 

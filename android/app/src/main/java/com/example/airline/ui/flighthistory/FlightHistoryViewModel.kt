@@ -1,15 +1,23 @@
 package com.example.airline.ui.flighthistory
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
+import com.example.airline.data.repository.FlightRepository
+import com.example.airline.data.retrofit.FlightLookupResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
-class FlightHistoryViewModel : ViewModel() {
+class FlightHistoryViewModel(
+    private val userId: Int,
+    private val repository: FlightRepository = FlightRepository()
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FlightHistoryUiState())
     val uiState: StateFlow<FlightHistoryUiState> = _uiState.asStateFlow()
@@ -20,58 +28,25 @@ class FlightHistoryViewModel : ViewModel() {
 
     fun loadFlightHistory() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            // Données mockées - chargement immédiat sans delay pour le test
-            val mockFlights = listOf(
-                FlightItem(
-                    id = "1",
-                    flightNumber = "LHO44",
-                    date = "Thu, Jan 20, 2026",
-                    departureTime = "09:50",
-                    departureAirport = "BOM",
-                    arrivalTime = "15:38",
-                    arrivalAirport = "USA",
-                    duration = "14h20m",
-                    cabinClass = "Economy",
-                    year = 2026
-                ),
-                FlightItem(
-                    id = "2",
-                    flightNumber = "NR007",
-                    date = "Mon, Dec 21, 2025",
-                    departureTime = "09:00",
-                    departureAirport = "ALG",
-                    arrivalTime = "10:10",
-                    arrivalAirport = "CDG",
-                    duration = "1h10m",
-                    cabinClass = "Economy",
-                    year = 2025
-                ),
-                FlightItem(
-                    id = "3",
-                    flightNumber = "MV33",
-                    date = "Sun, Oct 04, 2025",
-                    departureTime = "07:40",
-                    departureAirport = "ALG",
-                    arrivalTime = "10:00",
-                    arrivalAirport = "IST",
-                    duration = "1h50m",
-                    cabinClass = "Economy",
-                    year = 2025
-                )
-            )
-
-            // Petit delay pour simuler le chargement réseau
-            delay(300)
-
-            _uiState.update {
-                it.copy(
-                    flights = mockFlights,
-                    isLoading = false
-                )
-            }
-            println("DEBUG: Loading ${mockFlights.size} flights")
+            repository.getFlightHistory(userId)
+                .onSuccess { flights ->
+                    _uiState.update {
+                        it.copy(
+                            flights = flights.map { it.toFlightItem() },
+                            isLoading = false
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message
+                        )
+                    }
+                }
         }
     }
 
@@ -79,16 +54,41 @@ class FlightHistoryViewModel : ViewModel() {
         _uiState.update { it.copy(searchQuery = query) }
     }
 
-    fun filterFlights(): List<FlightItem> {
-        val query = _uiState.value.searchQuery.trim().lowercase()
-        return if (query.isEmpty()) {
-            _uiState.value.flights
-        } else {
-            _uiState.value.flights.filter {
-                it.flightNumber.lowercase().contains(query) ||
-                        it.departureAirport.lowercase().contains(query) ||
-                        it.arrivalAirport.lowercase().contains(query)
+    // ✅ Custom factory so userId can be injected
+    companion object {
+        fun factory(userId: Int): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    FlightHistoryViewModel(userId) as T
             }
-        }
     }
+}
+
+// ── Mapper ────────────────────────────────────────────────────
+private val inputFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
+private val dateFormatter  = DateTimeFormatter.ofPattern("EEE, MMM dd, yyyy")
+private val timeFormatter  = DateTimeFormatter.ofPattern("HH:mm")
+
+private fun FlightLookupResponse.toFlightItem(): FlightItem {
+    val departure = LocalDateTime.parse(flight.departureTime, inputFormatter)
+    val arrival   = LocalDateTime.parse(flight.arrivalTime,   inputFormatter)
+
+    val totalMinutes = ChronoUnit.MINUTES.between(departure, arrival)
+    val hours   = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    val duration = if (hours > 0) "${hours}h${minutes.toString().padStart(2, '0')}m" else "${minutes}m"
+
+    return FlightItem(
+        id               = booking.id.toString(),
+        flightNumber     = flight.flightNumber,
+        date             = departure.format(dateFormatter),
+        departureTime    = departure.format(timeFormatter),
+        departureAirport = flight.origin,
+        arrivalTime      = arrival.format(timeFormatter),
+        arrivalAirport   = flight.destination,
+        duration         = duration,
+        cabinClass       = "Economy",
+        year             = departure.year
+    )
 }

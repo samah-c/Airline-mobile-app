@@ -2,6 +2,8 @@ package com.example.airline.ui.signup
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.airline.data.repository.AuthRepository
+import com.example.airline.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,12 +12,14 @@ import kotlinx.coroutines.launch
 
 class SignUpViewModel : ViewModel() {
 
+    private val repository = AuthRepository()
+
     private val _uiState = MutableStateFlow(SignUpUiState())
     val uiState: StateFlow<SignUpUiState> = _uiState.asStateFlow()
 
     fun onFirstNameChange(firstName: String) {
-        _uiState.update { currentState ->
-            currentState.copy(
+        _uiState.update {
+            it.copy(
                 firstName = firstName,
                 firstNameError = if (firstName.isBlank() && firstName.isNotEmpty())
                     "First name is required" else null
@@ -24,28 +28,31 @@ class SignUpViewModel : ViewModel() {
     }
 
     fun onEmailChange(email: String) {
-        _uiState.update { currentState ->
-            currentState.copy(
-                email = email,
-                emailError = validateEmail(email)
+        _uiState.update {
+            it.copy(email = email, emailError = validateEmail(email))
+        }
+    }
+
+    fun onPhoneNumberChange(phoneNumber: String) {
+        _uiState.update {
+            it.copy(
+                phoneNumber = phoneNumber,
+                phoneNumberError = validatePhoneNumber(phoneNumber)
             )
         }
     }
 
     fun onPasswordChange(password: String) {
-        _uiState.update { currentState ->
-            currentState.copy(
-                password = password,
-                passwordError = validatePassword(password)
-            )
+        _uiState.update {
+            it.copy(password = password, passwordError = validatePassword(password))
         }
     }
 
     fun onConfirmPasswordChange(confirmPassword: String) {
-        _uiState.update { currentState ->
-            currentState.copy(
+        _uiState.update {
+            it.copy(
                 confirmPassword = confirmPassword,
-                confirmPasswordError = if (confirmPassword != currentState.password && confirmPassword.isNotEmpty())
+                confirmPasswordError = if (confirmPassword != it.password && confirmPassword.isNotEmpty())
                     "Passwords do not match" else null
             )
         }
@@ -60,20 +67,21 @@ class SignUpViewModel : ViewModel() {
     }
 
     fun signUp(onSuccess: () -> Unit, onError: (String) -> Unit) {
-        val currentState = _uiState.value
+        val s = _uiState.value
 
-        // Validate all fields
-        val firstNameError = if (currentState.firstName.isBlank()) "First name is required" else null
-        val emailError = validateEmail(currentState.email)
-        val passwordError = validatePassword(currentState.password)
-        val confirmPasswordError = if (currentState.password != currentState.confirmPassword)
-            "Passwords do not match" else null
+        val firstNameError = if (s.firstName.isBlank()) "First name is required" else null
+        val emailError = validateEmail(s.email)
+        val phoneNumberError = validatePhoneNumber(s.phoneNumber)
+        val passwordError = validatePassword(s.password)
+        val confirmPasswordError = if (s.password != s.confirmPassword) "Passwords do not match" else null
 
-        if (firstNameError != null || emailError != null || passwordError != null || confirmPasswordError != null) {
+        if (firstNameError != null || emailError != null || phoneNumberError != null ||
+            passwordError != null || confirmPasswordError != null) {
             _uiState.update {
                 it.copy(
                     firstNameError = firstNameError,
                     emailError = emailError,
+                    phoneNumberError = phoneNumberError,
                     passwordError = passwordError,
                     confirmPasswordError = confirmPasswordError
                 )
@@ -81,30 +89,27 @@ class SignUpViewModel : ViewModel() {
             return
         }
 
-        // Simulate API call (plus tard: appel réel au backend)
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            try {
-                // Simulation délai réseau
-                kotlinx.coroutines.delay(1500)
+            val result = repository.register(
+                name = s.firstName,
+                email = s.email,
+                password = s.password,
+                phoneNumber = s.phoneNumber
+            )
 
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        isSignUpSuccessful = true
-                    )
+            result.fold(
+                onSuccess = { token ->
+                    RetrofitClient.setToken(token)
+                    _uiState.update { it.copy(isLoading = false, isSignUpSuccessful = true) }
+                    onSuccess()
+                },
+                onFailure = { e ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                    onError(e.message ?: "Sign up failed")
                 }
-                onSuccess()
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = e.message ?: "Sign up failed"
-                    )
-                }
-                onError(_uiState.value.errorMessage ?: "Sign up failed")
-            }
+            )
         }
     }
 
@@ -112,22 +117,23 @@ class SignUpViewModel : ViewModel() {
         _uiState.update { it.copy(errorMessage = null) }
     }
 
-    // ── Validation helpers ──────────────────────────────────────
-    private fun validateEmail(email: String): String? {
-        return when {
-            email.isBlank() -> "Email is required"
-            !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Invalid email format"
-            else -> null
-        }
+    private fun validateEmail(email: String): String? = when {
+        email.isBlank() -> "Email is required"
+        !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Invalid email format"
+        else -> null
     }
 
-    private fun validatePassword(password: String): String? {
-        return when {
-            password.isBlank() -> "Password is required"
-            password.length < 8 -> "Password must be at least 8 characters"
-            !password.any { it.isUpperCase() } -> "Password must contain at least one uppercase letter"
-            !password.any { it.isDigit() } -> "Password must contain at least one number"
-            else -> null
-        }
+    private fun validatePhoneNumber(phone: String): String? = when {
+        phone.isBlank() -> "Phone number is required"
+        phone.length < 9 -> "Invalid phone number"
+        else -> null
+    }
+
+    private fun validatePassword(password: String): String? = when {
+        password.isBlank() -> "Password is required"
+        password.length < 8 -> "Password must be at least 8 characters"
+        !password.any { it.isUpperCase() } -> "Password must contain at least one uppercase letter"
+        !password.any { it.isDigit() } -> "Password must contain at least one number"
+        else -> null
     }
 }

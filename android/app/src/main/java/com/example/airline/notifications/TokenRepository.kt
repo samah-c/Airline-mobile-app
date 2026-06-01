@@ -10,6 +10,8 @@ import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlin.getValue
+import com.example.airline.network.RetrofitClient
 
 object TokenRepository {
 
@@ -17,7 +19,9 @@ object TokenRepository {
     private const val PREFS_NAME = "airline_prefs"
     private const val KEY_FCM_TOKEN = "fcm_token"
 
-    private val notificationApi = ApiClient.retrofit.create(NotificationApi::class.java)
+    private val notificationApi by lazy {
+        RetrofitClient.retrofit.create(NotificationApi::class.java)
+    }
 
     fun fetchAndSaveToken(context: Context) {
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->

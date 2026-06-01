@@ -1,9 +1,13 @@
 package com.example.airline.ui.login
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.airline.data.local.SessionManager
+import com.example.airline.data.repository.AuthRepository
+import com.example.airline.data.repository.GoogleAuthRepository
+import com.example.airline.network.RetrofitClient
 import com.example.airline.notifications.TokenRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +16,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = AuthRepository()
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -46,15 +52,13 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     fun login(onSuccess: () -> Unit, onError: (String) -> Unit) {
         val currentState = _uiState.value
 
+        // Validation
         val emailError = validateEmail(currentState.email)
         val passwordError = if (currentState.password.isBlank()) "Password is required" else null
 
         if (emailError != null || passwordError != null) {
             _uiState.update {
-                it.copy(
-                    emailError = emailError,
-                    passwordError = passwordError
-                )
+                it.copy(emailError = emailError, passwordError = passwordError)
             }
             return
         }
@@ -62,31 +66,26 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            try {
-                // Simulation frontend-only (pas de backend)
-                kotlinx.coroutines.delay(1500)
+            val result = repository.login(
+                email = currentState.email,
+                password = currentState.password
+            )
 
-                // Mock: accept any valid format email/password
-                val mockSuccess = !currentState.isOfflineMode ||
-                        (currentState.email == "test@test.com" && currentState.password == "password")
-
-                if (mockSuccess) {
-                    _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
+            result.fold(
+                onSuccess = { authResponse ->
+                    RetrofitClient.setToken(authResponse.token)
+                    SessionManager.saveSession(getApplication(), authResponse.token, authResponse.userId)
                     TokenRepository.fetchAndSaveToken(getApplication())
-
+                    _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                     onSuccess()
-                } else {
-                    throw Exception("Invalid credentials")
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = e.message)
+                    }
+                    onError(e.message ?: "Login failed")
                 }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = e.message ?: "Login failed"
-                    )
-                }
-                onError(_uiState.value.errorMessage ?: "Login failed")
-            }
+            )
         }
     }
 
@@ -99,6 +98,42 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             email.isBlank() -> "Email is required"
             !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Invalid email format"
             else -> null
+        }
+    }
+
+    private val googleAuthRepository = GoogleAuthRepository()
+
+    fun loginWithGoogle(context: Context) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+            // Étape 1 : récupérer l'idToken depuis Google
+            val tokenResult = googleAuthRepository.getGoogleIdToken(context)
+
+            tokenResult.fold(
+                onSuccess = { idToken ->
+                    // Étape 2 : envoyer au backend
+                    val loginResult = repository.loginWithGoogle(idToken)
+
+                    loginResult.fold(
+                        onSuccess = { jwtToken ->
+                            RetrofitClient.setToken(jwtToken)
+                            TokenRepository.fetchAndSaveToken(getApplication())
+                            _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
+                        },
+                        onFailure = { e ->
+                            _uiState.update {
+                                it.copy(isLoading = false, errorMessage = e.message)
+                            }
+                        }
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = e.message)
+                    }
+                }
+            )
         }
     }
 }

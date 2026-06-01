@@ -1,63 +1,82 @@
 package com.example.airline.ui.settings
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.airline.data.local.SessionManager
+import com.example.airline.data.local.SettingsPreferences
+import com.example.airline.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class SettingsViewModel : ViewModel() {
+class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
-    init {
-        loadUserSettings()
-    }
+    init { loadSettings() }
 
-    fun loadUserSettings() {
+    fun loadSettings() {
+        val ctx = getApplication<Application>()
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-
-            // Données simulées - à remplacer par appel API/SharedPreferences
+            // Settings locaux
             _uiState.update {
                 it.copy(
-                    userName = "puerto_rico",
-                    userEmail = "puertorico@example.dz",
-                    notificationsEnabled = true,
-                    darkModeEnabled = false,
-                    language = "Français",
-                    appVersion = "1.0.0",
-                    isLoading = false
+                    notificationsEnabled = SettingsPreferences.getNotifications(ctx),
+                    darkModeEnabled = SettingsPreferences.getDarkMode(ctx),
+                    language = SettingsPreferences.getLanguage(ctx),
+                    isLoading = true
                 )
+            }
+
+            // Nom + email depuis API
+            val token = SessionManager.getToken(ctx)
+            if (token != null) {
+                UserRepository().getProfile().fold(
+                    onSuccess = { user ->
+                        _uiState.update {
+                            it.copy(
+                                userName = user.name,
+                                userEmail = user.email,
+                                isLoading = false
+                            )
+                        }
+                    },
+                    onFailure = {
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
+                )
+            } else {
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
 
     fun toggleNotifications() {
-        _uiState.update {
-            it.copy(notificationsEnabled = !it.notificationsEnabled)
-        }
+        val ctx = getApplication<Application>()
+        val new = !_uiState.value.notificationsEnabled
+        SettingsPreferences.setNotifications(ctx, new)
+        _uiState.update { it.copy(notificationsEnabled = new) }
     }
 
     fun toggleDarkMode() {
-        _uiState.update {
-            it.copy(darkModeEnabled = !it.darkModeEnabled)
-        }
+        val ctx = getApplication<Application>()
+        val new = !_uiState.value.darkModeEnabled
+        SettingsPreferences.setDarkMode(ctx, new)
+        _uiState.update { it.copy(darkModeEnabled = new) }
     }
 
     fun updateLanguage(language: String) {
+        val ctx = getApplication<Application>()
+        SettingsPreferences.setLanguage(ctx, language)
         _uiState.update { it.copy(language = language) }
     }
 
     fun logout() {
-        // TODO: Clear session, navigate to login
-        viewModelScope.launch {
-            // Simulation déconnexion
-            kotlinx.coroutines.delay(300)
-            // Navigation gérée par l'UI via callback
-        }
+        SessionManager.clear(getApplication())
     }
 }

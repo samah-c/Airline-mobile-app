@@ -9,8 +9,10 @@ data class BoardingPassModel(
     val destinationCity: String = "",
     val passengerName: String = "",
     val seat: String = "",
+    val seatClass: String = "",
     val boardingTime: String = "",
     val departureTime: String = "",
     val arrivalTime: String = "",
-    val barcode: String = ""
+    val barcode: String = "",
+    val qrCode: String = ""   // base64-encoded QR code data from backend
 )

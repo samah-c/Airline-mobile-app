@@ -1,7 +1,9 @@
 package com.example.airline.ui.profile
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.airline.data.repository.UserRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,31 +11,40 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository = UserRepository()
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
-    init {
-        // Charger les données utilisateur (simulé)
-        loadUserProfile()
-    }
+    init { loadUserProfile() }
 
     fun loadUserProfile() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            delay(500) // Simulation chargement
 
-            // Données simulées - à remplacer par appel API
-            _uiState.update {
-                it.copy(
-                    firstName = "puerto_rico",
-                    lastName = "Puerto Rico",
-                    email = "puertorico@example.dz",
-                    phoneNumber = "",
-                    isLoading = false
-                )
-            }
+            repository.getProfile().fold(
+                onSuccess = { user ->
+                    android.util.Log.d("PROFILE", "Loaded: ${user.name} / ${user.email}")
+                    val parts = user.name.trim().split(" ", limit = 2)
+                    _uiState.update {
+                        it.copy(
+                            firstName = parts.getOrElse(0) { "" },
+                            lastName = parts.getOrElse(1) { "" },
+                            email = user.email,
+                            phoneNumber = user.phoneNumber,
+                            isLoading = false
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    android.util.Log.e("PROFILE", "Error: ${e.message}")
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = e.message)
+                    }
+                }
+            )
         }
     }
 
@@ -54,29 +65,27 @@ class ProfileViewModel : ViewModel() {
     }
 
     fun toggleSaveFlightHistory() {
-        _uiState.update {
-            it.copy(saveFlightHistory = !it.saveFlightHistory)
-        }
+        _uiState.update { it.copy(saveFlightHistory = !it.saveFlightHistory) }
     }
 
     fun saveProfile() {
         if (!_uiState.value.isFormValid) return
+        val state = _uiState.value
+        val fullName = "${state.firstName.trim()} ${state.lastName.trim()}"
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            delay(1000) // Simulation sauvegarde
 
-            // TODO: Appel API pour sauvegarder
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    isSuccess = true
-                )
-            }
-
-            // Reset success state après 2s
-            delay(2000)
-            _uiState.update { it.copy(isSuccess = false) }
+            repository.updateProfile(fullName, state.phoneNumber).fold(
+                onSuccess = {
+                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+                    delay(2000)
+                    _uiState.update { it.copy(isSuccess = false) }
+                },
+                onFailure = { e ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                }
+            )
         }
     }
 

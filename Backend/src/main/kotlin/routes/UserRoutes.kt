@@ -9,48 +9,38 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.userRoutes(authService: AuthService) {
-    authenticate {
+    fun Route.userRoutes(authService: AuthService) {
+        authenticate {
 
-        // Récupérer le profil
-        get("/api/users/{userId}") {
-            val userId = call.parameters["userId"]?.toInt()
-                ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid ID")
+            // GET profil de l'user connecté
+            get("/api/users/me") {
+                val principal = call.principal<JWTPrincipal>()
+                val userId = principal?.payload?.getClaim("userId")?.asInt()
+                    ?: return@get call.respond(HttpStatusCode.Unauthorized)
 
-            val principal = call.principal<JWTPrincipal>()
-            val tokenUserId = principal?.payload?.getClaim("userId")?.asInt()
-            if (tokenUserId != userId) {
-                call.respond(HttpStatusCode.Forbidden, "Access denied")
-                return@get
+                val user = authService.getUserById(userId)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "User not found")
+
+                call.respond(HttpStatusCode.OK, user)
             }
 
-            val user = authService.getUserById(userId)
-                ?: return@get call.respond(HttpStatusCode.NotFound, "User not found")
+            // PUT modifier le profil
+            put("/api/users/me") {
+                val principal = call.principal<JWTPrincipal>()
+                val userId = principal?.payload?.getClaim("userId")?.asInt()
+                    ?: return@put call.respond(HttpStatusCode.Unauthorized)
 
-            call.respond(HttpStatusCode.OK, user)
-        }
+                val request = call.receive<UpdateProfileRequest>()
 
-        // Modifier le profil
-        put("/api/users/{userId}") {
-            val userId = call.parameters["userId"]?.toInt()
-                ?: return@put call.respond(HttpStatusCode.BadRequest, "Invalid ID")
+                if (request.name.isBlank()) {
+                    call.respond(HttpStatusCode.BadRequest, "Name is required")
+                    return@put
+                }
 
-            val principal = call.principal<JWTPrincipal>()
-            val tokenUserId = principal?.payload?.getClaim("userId")?.asInt()
-            if (tokenUserId != userId) {
-                call.respond(HttpStatusCode.Forbidden, "Access denied")
-                return@put
+                authService.updateProfile(userId, request)
+
+                val updated = authService.getUserById(userId)
+                call.respond(HttpStatusCode.OK, updated!!)
             }
-
-            val request = call.receive<UpdateProfileRequest>()
-
-            if (request.name.isBlank()) {
-                call.respond(HttpStatusCode.BadRequest, "Name is required")
-                return@put
-            }
-
-            authService.updateProfile(userId, request)
-            call.respond(HttpStatusCode.OK, "Profile updated")
         }
     }
-}

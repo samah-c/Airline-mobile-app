@@ -3,6 +3,8 @@ package com.example.airline.ui.checkin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.airline.data.model.SeatModel
+import com.example.airline.data.model.SeatStateType
 import com.example.airline.data.repository.SeatRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,8 +12,12 @@ import kotlinx.coroutines.launch
 
 data class SeatSelectionUiState(
     val selectedSeats: Set<String> = emptySet(),
+    val availableSeats: List<SeatModel> = emptyList(),
+    val occupiedFromApi: Set<String> = emptySet(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val isConfirming: Boolean = false,
+    val error: String? = null,
+    val confirmed: Boolean = false
 )
 
 class SeatSelectionViewModel(
@@ -21,10 +27,24 @@ class SeatSelectionViewModel(
     private val _uiState = MutableStateFlow(SeatSelectionUiState())
     val uiState: StateFlow<SeatSelectionUiState> = _uiState
 
+    fun loadSeats(flightId: Int) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val seats = repository.getSeats(flightId)
+                val occupied = seats.filter { it.state == SeatStateType.OCCUPIED }.map { it.id }.toSet()
+                _uiState.value = _uiState.value.copy(availableSeats = seats, occupiedFromApi = occupied, isLoading = false)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            }
+        }
+    }
+
     fun toggleSeat(seatId: String) {
         val current = _uiState.value.selectedSeats
+        // Airline check-in = 1 seat per passenger — selecting a new seat replaces the old one
         _uiState.value = _uiState.value.copy(
-            selectedSeats = if (seatId in current) current - seatId else current + seatId
+            selectedSeats = if (seatId in current) emptySet() else setOf(seatId)
         )
     }
 
@@ -32,17 +52,22 @@ class SeatSelectionViewModel(
         _uiState.value = _uiState.value.copy(selectedSeats = emptySet())
     }
 
-    fun confirmSelection(flightId: String, onSuccess: () -> Unit) {
+    fun confirmSelection(checkInId: Int, onSuccess: () -> Unit) {
         val seats = _uiState.value.selectedSeats
         if (seats.isEmpty()) return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isConfirming = true, error = null)
             try {
-                seats.forEach { seatId -> repository.reserveSeat(flightId, seatId) }
-                _uiState.value = _uiState.value.copy(isLoading = false)
-                onSuccess()
+                val seatId = seats.first()
+                val success = repository.selectSeat(checkInId, seatId)
+                if (success) {
+                    _uiState.value = _uiState.value.copy(isConfirming = false, confirmed = true)
+                    onSuccess()
+                } else {
+                    _uiState.value = _uiState.value.copy(isConfirming = false, error = "Failed to confirm seat")
+                }
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                _uiState.value = _uiState.value.copy(isConfirming = false, error = e.message)
             }
         }
     }

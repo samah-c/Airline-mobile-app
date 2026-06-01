@@ -8,10 +8,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.navigation.compose.rememberNavController
-import com.example.airline.data.network.SessionManager
+import com.example.airline.data.network.SessionManager   // ← ton import (HEAD)
 import com.example.airline.navigation.AppNavGraph
+import com.example.airline.network.RetrofitClient
 import com.example.airline.ui.theme.AirlineTheme
+import com.google.firebase.messaging.FirebaseMessaging   // ← ajouté depuis main
+import dagger.hilt.android.AndroidEntryPoint             // ← ajouté depuis main
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -23,6 +27,20 @@ class MainActivity : ComponentActivity() {
 
         // Initialiser SessionManager
         SessionManager.init(this)
+
+        val savedToken = SessionManager.getToken()
+        if (savedToken != null) {
+            RetrofitClient.setToken(savedToken)
+        }
+
+        // Test Firebase (origin/main)
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                android.util.Log.d("FCM_TEST", "Token OK: ${task.result}")
+            } else {
+                android.util.Log.e("FCM_TEST", "Token FAILED: ${task.exception?.message}")
+            }
+        }
 
         enableEdgeToEdge()
 

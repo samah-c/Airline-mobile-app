@@ -51,7 +51,7 @@ class AuthService(private val database: Database) {
                 com.google.api.client.http.javanet.NetHttpTransport(),
                 com.google.api.client.json.gson.GsonFactory()
             )
-            .setAudience(listOf("725216303962-vd329i9oeak458pjsam43f94t78rkhmo.apps.googleusercontent.com"))
+            .setAudience(listOf("486909540404-8du9ojsngn05f9cohb1ns8bj9urhojm6.apps.googleusercontent.com"))
             .build()
 
         val googleIdToken = verifier.verify(idToken)
