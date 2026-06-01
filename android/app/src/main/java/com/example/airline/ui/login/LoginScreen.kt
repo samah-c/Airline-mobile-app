@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +60,7 @@ fun LoginScreen(
     viewModel: LoginViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
 
     LaunchedEffect(uiState.isLoggedIn) {
@@ -242,7 +244,9 @@ fun LoginScreen(
                 .clickable(
                     enabled = !uiState.isLoading,
                     onClick = {
-                        // TODO: Google Sign-In
+                        if (!uiState.isLoading) {
+                            viewModel.loginWithGoogle(context)
+                        }
                     }
                 )
                 .padding(horizontal = 16.dp),
@@ -268,6 +272,18 @@ fun LoginScreen(
                     color = Color(0xFF1F1F1F)
                 )
             }
+        }
+
+        uiState.errorMessage?.let { error ->
+            Text(
+                text = error,
+                color = Color.Red,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                textAlign = TextAlign.Center
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))

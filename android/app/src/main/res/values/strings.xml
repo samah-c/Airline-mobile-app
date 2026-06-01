@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">airline</string>
+    <!-- res/values/strings.xml -->
+    <string name="default_web_client_id">725216303962-vd329i9oeak458pjsam43f94t78rkhmo.apps.googleusercontent.com</string>
 </resources>
