@@ -218,20 +218,6 @@ fun LoginScreen(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = onNavigateToBaggage,
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)), // Vert
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-        ) {
-            Text(
-                text = "→ TEST: Aller à Baggage",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
-            )
-        }
 
         // Google Button
         Box(

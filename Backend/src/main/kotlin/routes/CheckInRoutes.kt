@@ -23,6 +23,13 @@ fun Route.checkInRoutes(checkInService: CheckInService) {
                 return@post
             }
 
+            // Retourner la session existante si elle existe déjà
+            val existingSession = checkInService.getActiveSessionForBooking(request.bookingId)
+            if (existingSession != null) {
+                call.respond(HttpStatusCode.OK, existingSession)
+                return@post
+            }
+
             val session = checkInService.startCheckIn(request.bookingId)
             call.respond(HttpStatusCode.Created, session)
         }

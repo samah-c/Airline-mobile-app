@@ -5,6 +5,7 @@ import com.example.schemas.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.transactions.transaction
 
 class CheckInService(
     private val database: Database,
@@ -236,6 +237,8 @@ class CheckInService(
     }
 
     suspend fun bookingBelongsToUser(bookingId: Int, userId: Int): Boolean = dbQuery {
+        println("=== bookingBelongsToUser ===")
+        println("bookingId: $bookingId, userId: $userId")
         Bookings.selectAll()
             .where { (Bookings.id eq bookingId) and (Bookings.passengerId eq userId) }
             .count() > 0
@@ -263,4 +266,24 @@ class CheckInService(
                 )
             }.singleOrNull()
     }
-}
+
+    suspend fun getActiveSessionForBooking(bookingId: Int): CheckInSession? = dbQuery {
+        CheckIns.selectAll()
+            .where { CheckIns.bookingId eq bookingId }
+            .orderBy(CheckIns.id, SortOrder.DESC)
+            .firstOrNull()
+            ?.let {
+                CheckInSession(
+                    id = it[CheckIns.id],
+                    bookingId = it[CheckIns.bookingId],
+                    status = it[CheckIns.status],
+                    passportVerified = it[CheckIns.passportVerified],
+                    seatNumber = it[CheckIns.seatNumber],
+                    cabinBags = it[CheckIns.cabinBags],
+                    checkedBags = it[CheckIns.checkedBags]
+                )
+            }
+    }
+
+    }
+

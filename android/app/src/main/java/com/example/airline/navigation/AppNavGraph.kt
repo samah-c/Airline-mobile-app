@@ -6,9 +6,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-/* yasmine was here */
-//import androidx.compose.runtime.collectAsState
-/* yasmine was here */
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,7 +30,6 @@ import com.example.airline.ui.homepage.HomeScreen
 import com.example.airline.ui.login.LoginScreen
 import com.example.airline.ui.onboarding.OnboardingScreen
 import com.example.airline.ui.profile.ProfileScreen
-import com.example.airline.network.RetrofitClient
 import com.example.airline.ui.scan.PassportScanScreen
 import com.example.airline.ui.scan.PassportScanViewModel
 import com.example.airline.ui.services.ServicesScreen
@@ -41,6 +37,19 @@ import com.example.airline.ui.settings.SettingsScreen
 import com.example.airline.ui.signup.SignUpScreen
 import com.example.airline.ui.splash.SplashScreen
 import com.example.airline.ui.verification.VerificationScreen
+import com.example.airline.ui.verification.VerificationViewModel
+import com.example.airline.ui.baggage.BaggageViewModel
+import com.example.airline.ui.services.ServicesViewModel
+import com.example.airline.ui.homepage.HomeViewModel
+import com.example.airline.ui.flightlookup.FlightLookUpResultViewModel
+import com.example.airline.ui.profile.ProfileViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Safe back stack helper — avoids crash when CHECKIN is no longer on the stack
+// ─────────────────────────────────────────────────────────────────────────────
+private fun NavHostController.getBackStackEntryOrNull(route: String) =
+    try { getBackStackEntry(route) } catch (e: IllegalArgumentException) { null }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Routes
@@ -81,11 +90,6 @@ object Routes {
 fun AppNavGraph(
     navController: NavHostController = rememberNavController()
 ) {
-    /* yasmine was here */
-    //val checkInViewModel: CheckInViewModel = viewModel()
-    //val checkInState by checkInViewModel.uiState.collectAsState()
-    //val passportScanViewModel: PassportScanViewModel = viewModel()
-    /* yasmine was here */
     val currentEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentEntry?.destination?.route
 
@@ -135,7 +139,6 @@ fun AppNavGraph(
                     },
                     onNavigateToSignUp         = { navController.navigate(Routes.SIGNUP) },
                     onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
-                    // FIX: was navigating to BAGGAGE — now correctly goes to offline boarding pass
                     onNavigateToBaggage        = { navController.navigate(Routes.BOARDING_PASS_OFFLINE) }
                 )
             }
@@ -183,19 +186,6 @@ fun AppNavGraph(
                     onNavigateBaggage = { navController.navigate(Routes.CHECKIN) },
                     onNavigateCheckin = { navController.navigate(Routes.CHECKIN) },
                     onNavigateProfile = { navController.navigate(Routes.PROFILE) }
-                /* yasmine was here */
-                //ProfileScreen(
-                  //  onNavigateBack          = { navController.popBackStack() },
-                  //  onNavigateToFlightHistory = { navController.navigate(Routes.FLIGHT_HISTORY) },
-                  //  onNavigateToSettings    = { navController.navigate(Routes.SETTINGS) },
-                  //  onStartTestCheckIn = { bookingId, token ->
-                  //      if (token.isNotBlank()) RetrofitClient.setToken(token)
-                  //      checkInViewModel.startCheckIn(bookingId, onSuccess = {
-                  //          navController.navigate(Routes.CHECKIN)
-                  //      }, onError = { message -> println("Test check-in failed: $message") })
-                  //  }
-               // )
-                /* yasmine was here */
                 )
             }
 
@@ -203,16 +193,8 @@ fun AppNavGraph(
                 ProfileScreen(
                     onNavigateBack            = { navController.popBackStack() },
                     onNavigateToFlightHistory = { navController.navigate(Routes.FLIGHT_HISTORY) },
-                    onNavigateToSettings      = { navController.navigate(Routes.SETTINGS) }
-                    onNavigateToSettings    = { navController.navigate(Routes.SETTINGS) },
-                    /* yasmine was here */
-                  //  onStartTestCheckIn = { bookingId, token ->
-                    //    if (token.isNotBlank()) RetrofitClient.setToken(token)
-                      //  checkInViewModel.startCheckIn(bookingId, onSuccess = {
-                        //    navController.navigate(Routes.CHECKIN)
-                        //}, onError = { message -> println("Test check-in failed: $message") })
-                   // }
-                    /* yasmine was here */
+                    onNavigateToSettings      = { navController.navigate(Routes.SETTINGS) },
+                    onStartTestCheckIn       = { _, _ -> /* TODO */ }
                 )
             }
 
@@ -240,78 +222,6 @@ fun AppNavGraph(
                 )
             }
 
-            /* yasmine was here */
-            // ── Baggage ───────────────────────────────────────
-            composable(Routes.BAGGAGE) {
-                BaggageScreen(
-                    checkInViewModel = checkInViewModel,
-                    onNavigateBack = { navController.popBackStack() },
-                    onConfirm      = { navController.navigate(Routes.SERVICES) }
-                )
-            }
-
-            // ── Check-In flow ─────────────────────────────────
-            composable(Routes.CHECKIN) {
-                CheckInScreen(
-                    viewModel       = checkInViewModel,
-                    onScanPassport  = { navController.navigate(Routes.SCAN) },
-                    onVerification  = { navController.navigate(Routes.CONFIRM_DETAILS) },
-                    onSeatSelection = { navController.navigate(Routes.SEAT_SELECTION) },
-                    onBaggage       = { navController.navigate(Routes.BAGGAGE) },
-                    onFlightOptions = { navController.navigate(Routes.SERVICES) },
-                    onFinish        = { navController.popBackStack() }
-                )
-            }
-
-            composable(Routes.SCAN) {
-                PassportScanScreen(
-                    viewModel       = passportScanViewModel,
-                    onBack          = { navController.popBackStack() },
-                    onMrzExtracted  = { mrzData ->
-                        checkInViewModel.initFromMrz(mrzData)
-                        navController.navigate(Routes.CONFIRM_DETAILS)
-                    }
-                )
-            }
-
-            composable(Routes.CONFIRM_DETAILS) {
-                VerificationScreen(
-                    checkInViewModel = checkInViewModel,
-                    onBack           = { navController.popBackStack() },
-                    onConfirm        = { navController.navigate(Routes.SEAT_SELECTION) }
-                )
-            }
-
-            composable(Routes.SERVICES) {
-                ServicesScreen(
-                    checkInViewModel = checkInViewModel,
-                    onBack           = { navController.popBackStack() },
-                    onConfirm        = { navController.navigate(Routes.FINAL_CONFIRMATION) }
-                )
-            }
-
-            composable(Routes.FINAL_CONFIRMATION) {
-                ConfirmationScreen(
-                    checkInViewModel = checkInViewModel,
-                    onBack           = { navController.popBackStack() },
-                    onConfirm        = {
-                        navController.navigate(Routes.BOARDING_PASS) {
-                            popUpTo(Routes.CHECKIN) { inclusive = true }
-                        }
-                    },
-                    onNext = { navController.popBackStack(Routes.CHECKIN, false) }
-                )
-            }
-
-            // ── Feriel's screens ──────────────────────────────
-            composable(Routes.SEAT_SELECTION) {
-                SeatSelectionScreen(
-                    checkInId = checkInState.checkInSessionId ?: 0,
-                    onBack = { navController.popBackStack() },
-                    onNext = { navController.navigate(Routes.BAGGAGE) }
-                )
-            }
-            /* yasmine was here */
             composable(Routes.BOARDING_PASS) {
                 BoardingPassScreen(
                     onBack     = { navController.popBackStack() },
@@ -337,20 +247,8 @@ fun AppNavGraph(
                 )
             }
 
-            // ── Check-In flow (correct order) ─────────────────
-            //
-            // CheckIn (hub) → Scan → Verification → SeatSelection
-            //                                              ↓
-            //                                           Baggage
-            //                                              ↓
-            //                                          Services
-            //                                              ↓
-            //                                     FinalConfirmation
-            //                                              ↓
-            //                                        BoardingPass
-            //
+            // ── Check-In flow ─────────────────────────────────
             composable(Routes.CHECKIN) {
-                // Scoped to this back stack entry so state resets on each check-in
                 val checkInViewModel: CheckInViewModel = viewModel(
                     viewModelStoreOwner = it
                 )
@@ -358,6 +256,8 @@ fun AppNavGraph(
                     viewModel       = checkInViewModel,
                     onScanPassport  = { navController.navigate(Routes.SCAN) },
                     onVerification  = { navController.navigate(Routes.CONFIRM_DETAILS) },
+                    onSeatSelection = { navController.navigate(Routes.SEAT_SELECTION) },
+                    onBaggage       = { navController.navigate(Routes.BAGGAGE) },
                     onFlightOptions = { navController.navigate(Routes.SERVICES) },
                     onFinish        = { navController.popBackStack() }
                 )
@@ -365,8 +265,8 @@ fun AppNavGraph(
 
             composable(Routes.SCAN) {
                 val checkInEntry = remember(currentEntry) {
-                    navController.getBackStackEntry(Routes.CHECKIN)
-                }
+                    navController.getBackStackEntryOrNull(Routes.CHECKIN)
+                } ?: return@composable
                 val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
                 val passportScanViewModel: PassportScanViewModel = viewModel()
 
@@ -382,63 +282,78 @@ fun AppNavGraph(
 
             composable(Routes.CONFIRM_DETAILS) {
                 val checkInEntry = remember(currentEntry) {
-                    navController.getBackStackEntry(Routes.CHECKIN)
-                }
+                    navController.getBackStackEntryOrNull(Routes.CHECKIN)
+                } ?: return@composable
                 val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
+                val verificationViewModel: VerificationViewModel = viewModel()
                 VerificationScreen(
-                    viewModel = checkInViewModel,
-                    onBack    = { navController.popBackStack() },
-                    onConfirm = { navController.navigate(Routes.SEAT_SELECTION) }
+                    viewModel        = verificationViewModel,
+                    checkInViewModel = checkInViewModel,
+                    onBack           = { navController.popBackStack() },
+                    onConfirm        = { navController.navigate(Routes.SEAT_SELECTION) }
                 )
             }
 
-            // FIX: SeatSelection now comes before Baggage
             composable(Routes.SEAT_SELECTION) {
+                val checkInEntry = remember(currentEntry) {
+                    navController.getBackStackEntryOrNull(Routes.CHECKIN)
+                } ?: return@composable
+                val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
+                val checkInId = checkInViewModel.uiState.value.checkInSessionId ?: 0
+
                 SeatSelectionScreen(
-                    onBack = { navController.popBackStack() },
-                    onNext = { navController.navigate(Routes.BAGGAGE) }
+                    checkInId = checkInId,
+                    onBack    = { navController.popBackStack() },
+                    onNext    = { navController.navigate(Routes.BAGGAGE) }
                 )
             }
 
-            // FIX: Baggage now between SeatSelection and Services
             composable(Routes.BAGGAGE) {
                 val checkInEntry = remember(currentEntry) {
-                    navController.getBackStackEntry(Routes.CHECKIN)
-                }
+                    navController.getBackStackEntryOrNull(Routes.CHECKIN)
+                } ?: return@composable
                 val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
+                val baggageViewModel: BaggageViewModel = viewModel()
                 BaggageScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onConfirm      = { navController.navigate(Routes.SERVICES) }
+                    viewModel        = baggageViewModel,
+                    checkInViewModel = checkInViewModel,
+                    onNavigateBack   = { navController.popBackStack() },
+                    onConfirm        = { navController.navigate(Routes.SERVICES) }
                 )
             }
 
             composable(Routes.SERVICES) {
                 val checkInEntry = remember(currentEntry) {
-                    navController.getBackStackEntry(Routes.CHECKIN)
-                }
+                    navController.getBackStackEntryOrNull(Routes.CHECKIN)
+                } ?: return@composable
                 val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
+                val servicesViewModel: ServicesViewModel = viewModel()
                 ServicesScreen(
-                    viewModel = checkInViewModel,
-                    onBack    = { navController.popBackStack() },
-                    onConfirm = { navController.navigate(Routes.FINAL_CONFIRMATION) },
-                    onSkip    = { navController.navigate(Routes.FINAL_CONFIRMATION) }
+                    viewModel        = servicesViewModel,
+                    checkInViewModel = checkInViewModel,
+                    onBack           = { navController.popBackStack() },
+                    onConfirm        = { navController.navigate(Routes.FINAL_CONFIRMATION) }
                 )
             }
 
             composable(Routes.FINAL_CONFIRMATION) {
                 val checkInEntry = remember(currentEntry) {
-                    navController.getBackStackEntry(Routes.CHECKIN)
-                }
+                    navController.getBackStackEntryOrNull(Routes.CHECKIN)
+                } ?: return@composable
                 val checkInViewModel: CheckInViewModel = viewModel(checkInEntry)
                 ConfirmationScreen(
-                    viewModel = checkInViewModel,
-                    onBack    = { navController.popBackStack() },
-                    onConfirm = {
+                    checkInViewModel = checkInViewModel,
+                    onBack           = { navController.popBackStack() },
+                    onConfirm        = {
                         navController.navigate(Routes.BOARDING_PASS) {
-                            popUpTo(Routes.CHECKIN) { inclusive = true }
+                            popUpTo(Routes.HOME) { inclusive = false }
                         }
                     },
-                    onNext = { navController.navigate(Routes.BOARDING_PASS) }
+                    onNext           = {
+                        navController.navigate(Routes.BOARDING_PASS) {
+                            popUpTo(Routes.HOME) { inclusive = false }
+                        }
+                    }
                 )
             }
         }

@@ -156,8 +156,7 @@ fun VerificationScreen(
                     value = verificationState.expirationDate,
                     onValueChange = viewModel::updateExpirationDate,
                     modifier = Modifier.weight(1f),
-                    placeholder = "jj/mm/aaaa",
-                    readOnly = true
+                    placeholder = "jj/mm/aaaa"
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
