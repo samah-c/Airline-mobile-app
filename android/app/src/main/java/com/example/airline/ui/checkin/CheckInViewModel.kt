@@ -25,7 +25,7 @@ data class CheckInUiState(
     val issuingAuthority: String = "",
     val email: String = "",
     val phoneNumber: String = "",
-    val bookingId: Int = 9,
+    val bookingId: Int = 2,
     val checkInSessionId: Int? = null,
     val isPassportVerified: Boolean = false,
     val selectedMeal: String = "",
