@@ -125,8 +125,6 @@ dependencies {
     implementation("com.jakewharton.threetenabp:threetenabp:1.4.6")
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
-
-
     // ── Tests ─────────────────────────────────────────────────
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
